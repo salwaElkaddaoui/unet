@@ -2,13 +2,16 @@ import tensorflow as tf
 
 class Unet(tf.Module):
 
-    def __init__(self, nb_classes: int, nb_blocks: int, padding: str, nb_initial_filters: int):
+    def __init__(self, nb_classes: int, nb_blocks: int=4, padding: str='SAME', nb_initial_filters: int=64):
         """
-        nb_classes: the number of classes of the model
-        nb_blocks: the number of convolutional blocks in the encoder 
-                    (the decoder has the same number of blocks)
-        padding: the padding type ('same' or 'valid') for the convolution layers
-        
+        nb_classes: The number of output classes for the segmentation task.
+        nb_blocks: The number of convolutional blocks in the encoder  (same number for the decoder). 
+            Default is 4.
+        padding: The padding type ('same' or 'valid') for the convolution layers.
+            Default is 'SAME'
+        nb_initial_filters : The number of convolutional filters in the first block of the encoder.
+            Subsequent blocks will have a number of filters that are multiplies of this value.
+            Default is 64.
         """
         super().__init__()
 
