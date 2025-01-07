@@ -15,16 +15,20 @@ class Unet(tf.Module):
         """
         super().__init__()
 
-        assert nb_classes>0, "The number of classes should be greater or equal to 1" 
+        if  nb_classes <= 0: 
+            raise ValueError("The number of classes should be greater or equal to 1")
         self.nb_classes = nb_classes
         
-        assert nb_blocks>0, "The number of convolution blocks should be greater or equal to 1" 
+        if nb_blocks <= 0:
+            raise ValueError("The number of convolution blocks should be greater or equal to 1")
         self.nb_blocks = nb_blocks
 
-        assert padding.upper() in ["SAME", "VALID"], "Padding should be either \'SAME\' or \'VALID\'"
+        if not (padding.upper() in ["SAME", "VALID"]):
+            raise ValueError("Padding should be either \'SAME\' or \'VALID\'")
         self.padding = padding.upper()
 
-        assert nb_initial_filters > 0, "Number of initial filter should be greater or equal to 1"
+        if nb_initial_filters <= 0:
+            raise ValueError("Number of initial filter should be greater or equal to 1")
         self.nb_initial_fitlers = nb_initial_filters
 
         self.initializer = tf.compat.v1.initializers.he_normal()
