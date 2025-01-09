@@ -20,7 +20,7 @@ class BasicDecoderBlock(UnetDecoderBlock):
     """
     A basic decoder block for the U-Net architecture, as described in the original U-Net paper.
 
-    conv2d_transpose -> batchnorm -> relu -> conv2d -> batchnorm -> relu ->  pool2d
+    conv2d_transpose -> concat -> conv2d -> batchnorm -> relu ->  conv2d -> batchnorm -> relu
     """
     def __init__(self):
         super().__init__()
@@ -59,12 +59,7 @@ class ResidualDecoderBlock(UnetDecoderBlock):
     """
     This class implements a decoder block with a residual connection, inspired by 
     ResNet-style architectures as described in the paper "Deep Residual Learning for 
-    Image Recognition" by He et al. 
-    
-    The block consists of two convolutional layers with optional batch normalization and ReLU activation. 
-    The skip connection adds the input of the block to the output of the first convolution before passing 
-    the result into the second convolution operation. This helps mitigate the vanishing
-    gradient problem and allows the network to learn identity mappings more effectively.
+    Image Recognition" by He et al.
     """
     def __init__(self):
         super().__init__()
