@@ -1,10 +1,10 @@
 import tensorflow as tf
 
 class UnetEncoderBlock:
-    def __init__(self, kernel_size, nb_in_channels, nb_out_channels, padding, initializer="he_normal", use_batchnorm=True):
+    def __init__(self, conv_kernel_size, nb_in_channels, nb_out_channels, padding, initializer="he_normal", use_batchnorm=True):
         self.nb_in_channels = nb_in_channels
         self.nb_out_channels = nb_out_channels
-        self.kernel_size = kernel_size
+        self.conv_kernel_size = conv_kernel_size
         self.padding = padding
         self.use_batchnorm = use_batchnorm
 
@@ -25,8 +25,8 @@ class BasicEncoderBlock(UnetEncoderBlock):
         super().__init__()
         
         #kernels definition
-        self.conv0 = tf.Variable(self.initializer(shape=[self.kernel_size, self.kernel_size, self.nb_in_channels, self.nb_out_channels])) #[Conv_kernel, nb_input_channels, nb_output_channels]
-        self.conv1 = tf.Variable(self.initializer(shape=[self.kernel_size, self.kernel_size, self.nb_out_channels, self.nb_out_channels]))
+        self.conv0 = tf.Variable(self.initializer(shape=[self.conv_kernel_size, self.conv_kernel_size, self.nb_in_channels, self.nb_out_channels])) #[Conv_kernel, nb_input_channels, nb_output_channels]
+        self.conv1 = tf.Variable(self.initializer(shape=[self.conv_kernel_size, self.conv_kernel_size, self.nb_out_channels, self.nb_out_channels]))
         #the pool operation does not any kernel definition
 
     def __call__(self, input):
