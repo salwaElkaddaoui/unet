@@ -67,6 +67,8 @@ class ResidualEncoderBlock(UnetEncoderBlock):
             conv = tf.nn.batch_normalization(conv)
         conv = tf.nn.relu(conv)
 
+        conv = tf.nn.conv2d(input=conv, filters=self.conv1, strides=[1, 1, 1, 1], padding=self.padding)
+        
         #the skip connection:
         
         # making sure that the input and the output of the previous conv operation 
@@ -80,8 +82,7 @@ class ResidualEncoderBlock(UnetEncoderBlock):
                 [0, 0]  # No padding for channels
             ]
             conv = tf.pad(conv, paddings=padding)
-
-        conv = tf.nn.conv2d(input=tf.add(input, conv), filters=self.conv1, strides=[1, 1, 1, 1], padding=self.padding)
+        conv = tf.add(input, conv)
         if self.use_batchnorm:
             conv = tf.nn.batch_normalization(conv)
         conv = tf.nn.relu(conv)
