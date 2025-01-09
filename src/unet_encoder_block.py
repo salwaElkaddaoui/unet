@@ -68,20 +68,19 @@ class ResidualEncoderBlock(UnetEncoderBlock):
         conv = tf.nn.relu(conv)
 
         conv = tf.nn.conv2d(input=conv, filters=self.conv1, strides=[1, 1, 1, 1], padding=self.padding)
-        
+
         #the skip connection:
         
         # making sure that the input and the output of the previous conv operation 
         # have the same height and width before adding them up
         shape_diff = tf.shape(input) - tf.shape(conv)
-        if shape_diff[1] != 0 or shape_diff[2] != 0:  
-            padding = [
-                [0, 0],  # No padding for batch dimension
-                [shape_diff[1]//2, (shape_diff[1]+1)//2],  # Pad height (before and after)
-                [shape_diff[2]//2, (shape_diff[2]+1)//2],  # Pad width (before and after)
-                [0, 0]  # No padding for channels
-            ]
-            conv = tf.pad(conv, paddings=padding)
+        padding = [
+            [0, 0],  # No padding for batch dimension
+            [shape_diff[1]//2, (shape_diff[1]+1)//2],  # Pad height (before and after)
+            [shape_diff[2]//2, (shape_diff[2]+1)//2],  # Pad width (before and after)
+            [0, 0]  # No padding for channels
+        ]
+        conv = tf.pad(conv, paddings=padding)
         conv = tf.add(input, conv)
         if self.use_batchnorm:
             conv = tf.nn.batch_normalization(conv)
