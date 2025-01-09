@@ -131,7 +131,7 @@ class MobileNetv1EncoderBlock(UnetEncoderBlock):
         conv = tf.nn.conv2d(input=conv, filters=self.conv1_depthwise, strides=[1, 1, 1, 1], padding=self.padding)
         if self.use_batchnorm:
             conv = tf.nn.batch_normalization(conv)
-        conv = tf.nn.relu(conv)
+        conv = tf.nn.relu6(conv)
 
         #pointwise convolution
         conv = tf.nn.conv2d(input=conv, filters=self.conv1_pointwise, strides=[1, 1, 1, 1], padding=self.padding)
