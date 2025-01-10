@@ -14,7 +14,7 @@ class UnetBottleneck:
     def __call__(self, x):
         raise NotImplementedError("Subclasses must implement the `__call__` method.")
 
-class BasicEncoderBlock(UnetBottleneck):
+class BasicBottleneck(UnetBottleneck):
     """
     A basic bottleneck for the U-Net architecture, as described in the original U-Net paper.
 
@@ -43,7 +43,7 @@ class BasicEncoderBlock(UnetBottleneck):
 
         
 
-class ResidualEncoderBlock(UnetBottleneck):
+class ResidualBottleneck(UnetBottleneck):
     """
     This class implements a bottlebneck with a residual connection, inspired by 
     ResNet-style architectures as described in the paper "Deep Residual Learning for 
