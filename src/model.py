@@ -1,8 +1,16 @@
 import tensorflow as tf
+from unet_encoder_block import BasicEncoderBlock, ResidualEncoderBlock
+from unet_bottleneck import BasicBottleneck, ResidualBottleneck
+from unet_decoder_block import BasicDecoderBlock, ResidualDecoderBlock
+
+BLOCK_FACTORY = {
+    "basic": [BasicEncoderBlock, BasicBottleneck, BasicDecoderBlock],
+    "resnet": [ResidualEncoderBlock, ResidualBottleneck, ResidualDecoderBlock],
+}
 
 class Unet(tf.Module):
 
-    def __init__(self, nb_classes: int, nb_blocks: int=4, padding: str='SAME', nb_initial_filters: int=64):
+    def __init__(self, nb_classes: int, nb_blocks: int=4, block_type='basic', padding: str='SAME', nb_initial_filters: int=64):
         """
         nb_classes: The number of output classes for the segmentation task.
         nb_blocks: The number of convolutional blocks in the encoder  (same number for the decoder). 
@@ -23,6 +31,7 @@ class Unet(tf.Module):
             raise ValueError("The number of convolution blocks should be greater or equal to 1")
         self.nb_blocks = nb_blocks
 
+
         if not (padding.upper() in ["SAME", "VALID"]):
             raise ValueError("Padding should be either \'SAME\' or \'VALID\'")
         self.padding = padding.upper()
@@ -33,39 +42,28 @@ class Unet(tf.Module):
 
         self.initializer = tf.compat.v1.initializers.he_normal()
 
-        # Definition of convolution kernels
-        self.encoder_kernels = []
-        self.decoder_kernels = []
-        self.bottleneck_kernels = []
-
-        for i in range(nb_blocks):
-            # Definition of the kernels of the encoder (contractive path) 
-            nb_input_channels_down = self.nb_initial_filters*2**(i-1) if i>0 else 3  # 3 for i==0, 64, 128, 256, 512 ...
-            nb_output_channels = self.nb_initial_filters*2**i # 64 for i==0, 128, 256, 512, 1024 ..., the nb of output channels is the same for the down block and its opposite up block
-            self.encoder_kernels.append([
-                tf.Variable(self.initializer(shape=[3, 3, nb_input_channels_down, nb_output_channels])),  # [Conv_kernel, nb_input_channels, nb_output_channels]
-                tf.Variable(self.initializer(shape=[3, 3, nb_output_channels, nb_output_channels])),  # [Conv_kernel, nb_input_channels, nb_output_channels]
-                #the pooling operation does not need learnable parameters
-            ])
-            
-            # Definition of the convolution and conv2d_transpose kernels of the decoder (expansive path)
-            nb_input_channels_up = self.nb_initial_filters*2**(i+1)
-            # nb_output_channels = 64*2**i
-            
-            self.decoder_kernels.append([
-                tf.Variable(self.initializer(shape=[2, 2, nb_output_channels, nb_input_channels_up])), # 2x2 conv2d_transpose (upsampling) [height, width, nb_out_channels, nb_in_channels]
-                tf.Variable(self.initializer(shape=[3, 3, nb_input_channels_up, nb_output_channels])),  # 3x3 conv2d [Conv_kernel, nb_input_channels, nb_output_channels]
-                tf.Variable(self.initializer(shape=[3, 3, nb_output_channels, nb_output_channels]))  # 3x3 conv2d [Conv_kernel, nb_input_channels, nb_output_channels]   
-            ])
-            if i==0:
-                self.decoder_kernels[-1].append( tf.Variable( self.initializer(shape=[1, 1, nb_output_channels, self.nb_classes]) ) )
-
-        nb_input_channels_down = self.nb_initial_filters*2**(nb_blocks-1) if i>0 else 3  # 3 for i==0, 64, 128, 256, 512 ...
-        nb_output_channels = self.nb_initial_filters*2**nb_blocks # 64 for i==0, 128, 256, 512, 1024 ..., the nb of output channels is the same for the down block and its opposite up block
-        self.bottleneck_kernels.append([
-            tf.Variable(self.initializer(shape=[3, 3, nb_input_channels_down, nb_output_channels])),  # [Conv_kernel, nb_input_channels, nb_output_channels]
-            tf.Variable(self.initializer(shape=[3, 3, nb_output_channels, nb_output_channels])),  # [Conv_kernel, nb_input_channels, nb_output_channels]
-            #the pooling operation does not need learnable parameters
-        ])
-    
+        if not (block_type.lower() in ['basic', 'resnet']):
+            raise ValueError(f"Block type {block_type.lower()}. Valid values: \'basic\', \'resnet\'")
+        self.encoder_class, self.bottleneck_class, self.decoder_class = BLOCK_FACTORY[block_type]
         
+        self.encoder_blocks = []
+        self.decoder_blocks = []
+        for i in range(self.nb_blocks):
+            self.encoder_blocks.append(self.encoder_class(  conv_kernel_size=3, 
+                                                            nb_in_channels=64*2**(i-1), 
+                                                            nb_out_channels=64*2**i, 
+                                                            padding=self.padding))
+            self.decoder_blocks.append()
+        
+        self.bottleneck = self.bottleneck_class(conv_kernel_size=3, 
+                                                nb_in_channels=64*2**(self.nb_blocks-1) , 
+                                                nb_out_channels=64*2**nb_blocks, 
+                                                padding=self.padding)
+
+        for i in range(nb_blocks, -1, -1):
+            self.decoder_blocks.append(self.decoder_class(conv_kernel_size=3, 
+                                                          up_kernel_size=2, 
+                                                          nb_in_channels=64*2**(i+1), 
+                                                          nb_out_channels=64*2**i, 
+                                                          padding=self.padding
+                                    ))
