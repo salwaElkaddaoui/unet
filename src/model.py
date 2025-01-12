@@ -21,6 +21,14 @@ class Unet(tf.Module):
         nb_initial_filters : The number of convolutional filters in the first block of the encoder.
             Subsequent blocks will have a number of filters that are multiplies of this value.
             Default is 64.
+        
+        Indices of the blocks:
+        0               3
+        1               2
+        2               1
+        3               0
+            Bottleneck
+        
         """
         super().__init__()
 
@@ -55,21 +63,21 @@ class Unet(tf.Module):
         self.decoder_blocks = []
         for i in range(self.nb_blocks):
             self.encoder_blocks.append(self.encoder_class(  conv_kernel_size=3, 
-                                                            nb_in_channels=64*2**(i-1) if i>0 else self.in_image_depth, 
-                                                            nb_out_channels=64*2**i, 
+                                                            nb_in_channels=self.nb_initial_fitlers*2**(i-1) if i>0 else self.in_image_depth, 
+                                                            nb_out_channels=self.nb_initial_fitlers*2**i, 
                                                             padding=self.padding))
             self.decoder_blocks.append()
         
         self.bottleneck = self.bottleneck_class(conv_kernel_size=3, 
-                                                nb_in_channels=64*2**(self.nb_blocks-1) , 
-                                                nb_out_channels=64*2**nb_blocks, 
+                                                nb_in_channels=self.nb_initial_fitlers*2**(self.nb_blocks-1) , 
+                                                nb_out_channels=self.nb_initial_fitlers*2**nb_blocks, 
                                                 padding=self.padding)
 
-        for i in range(nb_blocks, -1, -1):
+        for i in range(nb_blocks-1, -1, -1):
             self.decoder_blocks.append(self.decoder_class(conv_kernel_size=3, 
                                                           up_kernel_size=2, 
-                                                          nb_in_channels=64*2**(i+1), 
-                                                          nb_out_channels=64*2**i, 
+                                                          nb_in_channels=self.nb_initial_fitlers*2**(i+1), 
+                                                          nb_out_channels=self.nb_initial_fitlers*2**i, 
                                                           padding=self.padding
                                     ))
-
+    
