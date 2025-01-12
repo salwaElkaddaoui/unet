@@ -10,8 +10,9 @@ BLOCK_FACTORY = {
 
 class Unet(tf.Module):
 
-    def __init__(self, nb_classes: int, nb_blocks: int=4, block_type='basic', padding: str='SAME', nb_initial_filters: int=64):
+    def __init__(self, in_image_depth: int, nb_classes: int, nb_blocks: int=4, block_type='basic', padding: str='SAME', nb_initial_filters: int=64):
         """
+        in_image_depth: number of chennels (depth) of theinput image of the network
         nb_classes: The number of output classes for the segmentation task.
         nb_blocks: The number of convolutional blocks in the encoder  (same number for the decoder). 
             Default is 4.
@@ -22,6 +23,10 @@ class Unet(tf.Module):
             Default is 64.
         """
         super().__init__()
+
+        if  in_image_depth <= 0: 
+            raise ValueError("The number of classes should be greater or equal to 1")
+        self.in_image_depth = in_image_depth
 
         if  nb_classes <= 0: 
             raise ValueError("The number of classes should be greater or equal to 1")
@@ -50,7 +55,7 @@ class Unet(tf.Module):
         self.decoder_blocks = []
         for i in range(self.nb_blocks):
             self.encoder_blocks.append(self.encoder_class(  conv_kernel_size=3, 
-                                                            nb_in_channels=64*2**(i-1), 
+                                                            nb_in_channels=64*2**(i-1) if i>0 else self.in_image_depth, 
                                                             nb_out_channels=64*2**i, 
                                                             padding=self.padding))
             self.decoder_blocks.append()
@@ -67,3 +72,4 @@ class Unet(tf.Module):
                                                           nb_out_channels=64*2**i, 
                                                           padding=self.padding
                                     ))
+
