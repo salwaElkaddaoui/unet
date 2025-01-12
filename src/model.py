@@ -74,10 +74,11 @@ class Unet(tf.Module):
                                                 padding=self.padding)
 
         for i in range(nb_blocks-1, -1, -1):
-            self.decoder_blocks.append(self.decoder_class(conv_kernel_size=3, 
-                                                          up_kernel_size=2, 
-                                                          nb_in_channels=self.nb_initial_fitlers*2**(i+1), 
-                                                          nb_out_channels=self.nb_initial_fitlers*2**i, 
-                                                          padding=self.padding
+            self.decoder_blocks.append(self.decoder_class(  nb_classes = self.nb_classes,
+                                                            conv_kernel_size=3, 
+                                                            up_kernel_size=2, 
+                                                            nb_in_channels=self.nb_initial_fitlers*2**(i+1), 
+                                                            nb_out_channels=self.nb_initial_fitlers*2**i, 
+                                                            padding=self.padding,
+                                                            is_last=True if i==self.nb_blocks-1 else False
                                     ))
-    
