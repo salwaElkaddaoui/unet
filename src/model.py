@@ -82,3 +82,22 @@ class Unet(tf.Module):
                                                             padding=self.padding,
                                                             is_last=True if i==self.nb_blocks-1 else False
                                     ))
+
+    def __call__(self, input):
+
+        encoder_blocks_outputs = []
+        for i in range(self.nb_blocks):        
+            if i==0:
+                pool=input
+            conv, pool = self.encoder_blocks[i](input=pool)
+            encoder_blocks_outputs.append(conv)
+
+        bottleneck_output = self.bottleneck(pool)
+
+        for i in range(self.nb_blocks):
+            if i==0:
+                output = bottleneck_output
+            output = self.decoder_blocks[i](previous_decoder_output=output, 
+                                            opposite_encoder_output=encoder_blocks_outputs[self.nb_blocks-(i+1)])
+        
+        return output
