@@ -12,7 +12,7 @@ class UnetDecoderBlock:
         self.is_last = is_last
 
         if initializer=="he_normal":
-            self.initializer = tf.compat.v1.initializers.he_normal
+            self.initializer = tf.compat.v1.initializers.he_normal()
 
     def __call__(self, x):
         raise NotImplementedError("Subclasses must implement the `__call__` method.")

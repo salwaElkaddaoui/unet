@@ -9,7 +9,7 @@ class UnetEncoderBlock:
         self.use_batchnorm = use_batchnorm
 
         if initializer=="he_normal":
-            self.initializer = tf.compat.v1.initializers.he_normal
+            self.initializer = tf.compat.v1.initializers.he_normal()
 
     def __call__(self, x):
         raise NotImplementedError("Subclasses must implement the `__call__` method.")
