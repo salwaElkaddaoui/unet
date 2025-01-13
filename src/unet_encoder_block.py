@@ -2,9 +2,9 @@ import tensorflow as tf
 
 class UnetEncoderBlock:
     def __init__(self, conv_kernel_size, nb_in_channels, nb_out_channels, padding, initializer="he_normal", use_batchnorm=True):
+        self.conv_kernel_size = conv_kernel_size
         self.nb_in_channels = nb_in_channels
         self.nb_out_channels = nb_out_channels
-        self.conv_kernel_size = conv_kernel_size
         self.padding = padding
         self.use_batchnorm = use_batchnorm
 
@@ -21,8 +21,8 @@ class BasicEncoderBlock(UnetEncoderBlock):
 
     conv2d -> batchnorm -> relu -> conv2d -> batchnorm -> relu ->  pool2d
     """
-    def __init__(self):
-        super().__init__()
+    def __init__(self, conv_kernel_size, nb_in_channels, nb_out_channels, padding, initializer="he_normal", use_batchnorm=True):
+        super().__init__(conv_kernel_size, nb_in_channels, nb_out_channels, padding, initializer="he_normal", use_batchnorm=True)
         
         #kernels definition
         self.conv0 = tf.Variable(self.initializer(shape=[self.conv_kernel_size, self.conv_kernel_size, self.nb_in_channels, self.nb_out_channels])) #[Conv_kernel, nb_input_channels, nb_output_channels]
@@ -56,8 +56,8 @@ class ResidualEncoderBlock(UnetEncoderBlock):
     the result into the second convolution operation. This helps mitigate the vanishing
     gradient problem and allows the network to learn identity mappings more effectively.
     """
-    def __init__(self):
-        super().__init__()
+    def __init__(self, conv_kernel_size, nb_in_channels, nb_out_channels, padding, initializer="he_normal", use_batchnorm=True):
+        super().__init__(self, conv_kernel_size, nb_in_channels, nb_out_channels, padding, initializer="he_normal", use_batchnorm=True)
         self.conv0 = tf.Variable(self.initializer(shape=[self.kernel_size, self.kernel_size, self.nb_in_channels, self.nb_out_channels])) #[Conv_kernel, nb_input_channels, nb_output_channels]
         self.conv1 = tf.Variable(self.initializer(shape=[self.kernel_size, self.kernel_size, self.nb_out_channels, self.nb_out_channels]))
         

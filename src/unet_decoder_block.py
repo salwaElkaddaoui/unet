@@ -24,8 +24,8 @@ class BasicDecoderBlock(UnetDecoderBlock):
 
     conv2d_transpose -> concat -> conv2d -> batchnorm -> relu ->  conv2d -> batchnorm -> relu
     """
-    def __init__(self):
-        super().__init__()
+    def __init__(self, nb_classes, conv_kernel_size, up_kernel_size, nb_in_channels, nb_out_channels, padding, initializer="he_normal", use_batchnorm=True, is_last=False):
+        super().__init__(nb_classes, conv_kernel_size, up_kernel_size, nb_in_channels, nb_out_channels, padding, initializer="he_normal", use_batchnorm=True, is_last=False)
         
         #kernels definition
         self.up = tf.Variable(self.initializer(shape=[self.up_kernel_size, self.up_kernel_size, self.nb_out_channels, self.nb_in_channels])), # conv2d_transpose (upsampling) [height, width, nb_out_channels, nb_in_channels]
@@ -66,8 +66,8 @@ class ResidualDecoderBlock(UnetDecoderBlock):
     ResNet-style architectures as described in the paper "Deep Residual Learning for 
     Image Recognition" by He et al.
     """
-    def __init__(self):
-        super().__init__()
+    def __init__(self, nb_classes, conv_kernel_size, up_kernel_size, nb_in_channels, nb_out_channels, padding, initializer="he_normal", use_batchnorm=True, is_last=False):
+        super().__init__(nb_classes, conv_kernel_size, up_kernel_size, nb_in_channels, nb_out_channels, padding, initializer="he_normal", use_batchnorm=True, is_last=False)
         
         #kernels definition
         self.up = tf.Variable(self.initializer(shape=[self.up_kernel_size, self.up_kernel_size, self.nb_out_channels, self.nb_in_channels])), # conv2d_transpose (upsampling) [height, width, nb_out_channels, nb_in_channels]
