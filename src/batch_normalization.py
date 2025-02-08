@@ -8,7 +8,6 @@ class BatchNormalization:
         Args:
             epsilon (float): Small constant to avoid division by zero.
             momentum (float): Momentum for updating moving averages.
-            trainable (bool): Whether to update the mean and variance during training.
         """
         self.epsilon = epsilon
         self.momentum = momentum

@@ -3,6 +3,7 @@ from unet_encoder_block import BasicEncoderBlock, ResidualEncoderBlock
 from unet_bottleneck import BasicBottleneck, ResidualBottleneck
 from unet_decoder_block import BasicDecoderBlock, ResidualDecoderBlock
 
+
 BLOCK_FACTORY = {
     "basic": [BasicEncoderBlock, BasicBottleneck, BasicDecoderBlock],
     "resnet": [ResidualEncoderBlock, ResidualBottleneck, ResidualDecoderBlock],
@@ -10,7 +11,8 @@ BLOCK_FACTORY = {
 
 class Unet(tf.Module):
 
-    def __init__(self, in_image_depth: int, nb_classes: int, nb_blocks: int=4, block_type='basic', padding: str='SAME', nb_initial_filters: int=64):
+    def __init__(self, in_image_depth: int, nb_classes: int, nb_blocks: int=4, block_type='basic', 
+                 padding: str='SAME', nb_initial_filters: int=64, use_batchnorm=True):
         """
         in_image_depth: number of chennels (depth) of theinput image of the network
         nb_classes: The number of output classes for the segmentation task.
@@ -52,8 +54,12 @@ class Unet(tf.Module):
         if nb_initial_filters <= 0:
             raise ValueError("Number of initial filter should be greater or equal to 1")
         self.nb_initial_fitlers = nb_initial_filters
+        self.use_batchnorm = use_batchnorm
+        
 
-        self.initializer = tf.compat.v1.initializers.he_normal()
+        # self.initializer = tf.compat.v1.initializers.he_normal()
+
+
 
         if not (block_type.lower() in ['basic', 'resnet']):
             raise ValueError(f"Block type {block_type.lower()}. Valid values: \'basic\', \'resnet\'")
@@ -65,39 +71,41 @@ class Unet(tf.Module):
             self.encoder_blocks.append(self.encoder_class(  conv_kernel_size=3, 
                                                             nb_in_channels=self.nb_initial_fitlers*2**(i-1) if i>0 else self.in_image_depth, 
                                                             nb_out_channels=self.nb_initial_fitlers*2**i, 
-                                                            padding=self.padding))
-            self.decoder_blocks.append()
+                                                            padding=self.padding,initializer="he_normal", use_batchnorm=self.use_batchnorm))
+            
         
         self.bottleneck = self.bottleneck_class(conv_kernel_size=3, 
                                                 nb_in_channels=self.nb_initial_fitlers*2**(self.nb_blocks-1) , 
                                                 nb_out_channels=self.nb_initial_fitlers*2**nb_blocks, 
-                                                padding=self.padding)
+                                                padding=self.padding, initializer="he_normal", use_batchnorm=self.use_batchnorm)
 
         for i in range(nb_blocks-1, -1, -1):
             self.decoder_blocks.append(self.decoder_class(  nb_classes = self.nb_classes,
                                                             conv_kernel_size=3, 
                                                             up_kernel_size=2, 
-                                                            nb_in_channels=self.nb_initial_fitlers*2**(i+1), 
+                                                            nb_in_channels=self.nb_initial_fitlers*2**(i+1), #ceci sous-entend que i commence de nb_blocks-1
                                                             nb_out_channels=self.nb_initial_fitlers*2**i, 
                                                             padding=self.padding,
-                                                            is_last=True if i==self.nb_blocks-1 else False
+                                                            initializer="he_normal", use_batchnorm=self.use_batchnorm,
+                                                            is_last=True if i==0 else False
                                     ))
 
-    def __call__(self, input):
+    def __call__(self, input, is_training=True):
 
         encoder_blocks_outputs = []
         for i in range(self.nb_blocks):        
             if i==0:
                 pool=input
-            conv, pool = self.encoder_blocks[i](input=pool)
+            conv, pool = self.encoder_blocks[i](input=pool, is_training=is_training)
             encoder_blocks_outputs.append(conv)
 
-        bottleneck_output = self.bottleneck(pool)
+        bottleneck_output = self.bottleneck(pool, is_training)
 
         for i in range(self.nb_blocks):
             if i==0:
                 output = bottleneck_output
             output = self.decoder_blocks[i](previous_decoder_output=output, 
-                                            opposite_encoder_output=encoder_blocks_outputs[self.nb_blocks-(i+1)])
+                                            opposite_encoder_output=encoder_blocks_outputs[self.nb_blocks-(i+1)],
+                                            is_training=is_training)
         
         return output
