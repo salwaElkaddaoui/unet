@@ -12,7 +12,13 @@ class UnetEncoderBlock:
         if initializer=="he_normal":
             self.initializer = tf.compat.v1.initializers.he_normal()
         if use_batchnorm:
-            self.batch_norm = BatchNormalization()
+            self.batch_norm0 = BatchNormalization(nb_channels=self.nb_out_channels)
+            self.batch_norm1 = BatchNormalization(nb_channels=self.nb_out_channels)
+
+        #kernels definition
+        self.conv0 = tf.Variable(self.initializer(shape=[self.conv_kernel_size, self.conv_kernel_size, self.nb_in_channels, self.nb_out_channels])) #[Conv_kernel, nb_input_channels, nb_output_channels]
+        self.conv1 = tf.Variable(self.initializer(shape=[self.conv_kernel_size, self.conv_kernel_size, self.nb_out_channels, self.nb_out_channels]))
+
 
     def __call__(self, x):
         raise NotImplementedError("Subclasses must implement the `__call__` method.")
@@ -26,28 +32,23 @@ class BasicEncoderBlock(UnetEncoderBlock):
     """
     def __init__(self, conv_kernel_size, nb_in_channels, nb_out_channels, padding, initializer="he_normal", use_batchnorm=True):
         super().__init__(conv_kernel_size, nb_in_channels, nb_out_channels, padding, initializer, use_batchnorm)
-        
-        #kernels definition
-        self.conv0 = tf.Variable(self.initializer(shape=[self.conv_kernel_size, self.conv_kernel_size, self.nb_in_channels, self.nb_out_channels])) #[Conv_kernel, nb_input_channels, nb_output_channels]
-        self.conv1 = tf.Variable(self.initializer(shape=[self.conv_kernel_size, self.conv_kernel_size, self.nb_out_channels, self.nb_out_channels]))
-        #the pool operation does not any kernel definition
+
 
     def __call__(self, input, is_training):
         conv = tf.nn.conv2d(input=input, filters=self.conv0, strides=[1, 1, 1, 1], padding=self.padding)
         if self.use_batchnorm:
-            conv = self.batch_norm(conv, training=is_training)
+            conv = self.batch_norm0(conv, training=is_training)
         conv = tf.nn.relu(conv)
 
         conv = tf.nn.conv2d(input=conv, filters=self.conv1, strides=[1, 1, 1, 1], padding=self.padding)
         if self.use_batchnorm:
-            conv = self.batch_norm(conv, training=is_training)
+            conv = self.batch_norm1(conv, training=is_training)
         conv = tf.nn.relu(conv)
 
         pool = tf.nn.max_pool(conv, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding=self.padding)
         return conv, pool
 
         
-
 class ResidualEncoderBlock(UnetEncoderBlock):
     """
     This class implements an encoder block with a residual connection, inspired by 
@@ -61,13 +62,11 @@ class ResidualEncoderBlock(UnetEncoderBlock):
     """
     def __init__(self, conv_kernel_size, nb_in_channels, nb_out_channels, padding, initializer="he_normal", use_batchnorm=True):
         super().__init__(self, conv_kernel_size, nb_in_channels, nb_out_channels, padding, initializer, use_batchnorm)
-        self.conv0 = tf.Variable(self.initializer(shape=[self.kernel_size, self.kernel_size, self.nb_in_channels, self.nb_out_channels])) #[Conv_kernel, nb_input_channels, nb_output_channels]
-        self.conv1 = tf.Variable(self.initializer(shape=[self.kernel_size, self.kernel_size, self.nb_out_channels, self.nb_out_channels]))
-        
+
     def __call__(self, input, is_training):
         conv = tf.nn.conv2d(input=input, filters=self.conv0, strides=[1, 1, 1, 1], padding=self.padding)
         if self.use_batchnorm:
-            conv = self.batch_norm(conv, training=is_training)
+            conv = self.batch_norm0(conv, training=is_training)
         conv = tf.nn.relu(conv)
 
         conv = tf.nn.conv2d(input=conv, filters=self.conv1, strides=[1, 1, 1, 1], padding=self.padding)
@@ -86,7 +85,7 @@ class ResidualEncoderBlock(UnetEncoderBlock):
         conv = tf.pad(conv, paddings=padding)
         conv = tf.add(input, conv)
         if self.use_batchnorm:
-            conv = self.batch_norm(conv, training=is_training)
+            conv = self.batch_norm1(conv, training=is_training)
         conv = tf.nn.relu(conv)
 
         pool = tf.nn.max_pool(conv, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding=self.padding)

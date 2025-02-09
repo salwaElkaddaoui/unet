@@ -12,7 +12,7 @@ BLOCK_FACTORY = {
 class Unet(tf.Module):
 
     def __init__(self, in_image_depth: int, nb_classes: int, nb_blocks: int=4, block_type='basic', 
-                 padding: str='SAME', nb_initial_filters: int=64, use_batchnorm=True):
+                 padding: str='VALID', nb_initial_filters: int=64, use_batchnorm=True):
         """
         in_image_depth: number of chennels (depth) of theinput image of the network
         nb_classes: The number of output classes for the segmentation task.
