@@ -30,9 +30,9 @@ class BasicEncoderBlock(UnetEncoderBlock):
 
     conv2d -> batchnorm -> relu -> conv2d -> batchnorm -> relu ->  pool2d
     """
-    def __init__(self, conv_kernel_size, nb_in_channels, nb_out_channels, padding, initializer="he_normal", use_batchnorm=True):
+    def __init__(self, conv_kernel_size, nb_in_channels, nb_out_channels, padding, initializer="he_normal", use_batchnorm=True, use_dropout=False):
         super().__init__(conv_kernel_size, nb_in_channels, nb_out_channels, padding, initializer, use_batchnorm)
-
+        self.use_dropout = use_dropout
 
     def __call__(self, input, is_training):
         conv = tf.nn.conv2d(input=input, filters=self.conv0, strides=[1, 1, 1, 1], padding=self.padding)
@@ -44,6 +44,9 @@ class BasicEncoderBlock(UnetEncoderBlock):
         if self.use_batchnorm:
             conv = self.batch_norm1(conv, training=is_training)
         conv = tf.nn.relu(conv)
+
+        if self.use_dropout:
+            conv = tf.nn.dropout(x=conv, rate=0.5)
 
         pool = tf.nn.max_pool(conv, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding=self.padding)
         return conv, pool

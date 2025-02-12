@@ -41,7 +41,7 @@ class BasicDecoderBlock(UnetDecoderBlock):
     def __call__(self, previous_decoder_output, opposite_encoder_output, is_training):
         def compute_concat_dim(t1, t2):
             """
-            we assume that in all tensors flowing in the model: H==W
+            we assume that in all tensors flowing through the model: H==W
             """
             shape_diff = max(t1[1], t2[1])-min(t1[1], t2[1])
             start = shape_diff//2 

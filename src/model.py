@@ -71,7 +71,10 @@ class Unet(tf.Module):
             self.encoder_blocks.append(self.encoder_class(  conv_kernel_size=3, 
                                                             nb_in_channels=self.nb_initial_fitlers*2**(i-1) if i>0 else self.in_image_depth, 
                                                             nb_out_channels=self.nb_initial_fitlers*2**i, 
-                                                            padding=self.padding,initializer="he_normal", use_batchnorm=self.use_batchnorm))
+                                                            padding=self.padding,
+                                                            initializer="he_normal", 
+                                                            use_batchnorm=self.use_batchnorm,
+                                                            use_dropout=True if i >= self.nb_blocks-2 else False)) #use dropout in the last 2 blocks of the contractive path
             
         
         self.bottleneck = self.bottleneck_class(conv_kernel_size=3, 
@@ -79,7 +82,7 @@ class Unet(tf.Module):
                                                 nb_out_channels=self.nb_initial_fitlers*2**nb_blocks, 
                                                 padding=self.padding, initializer="he_normal", use_batchnorm=self.use_batchnorm)
 
-        for i in range(nb_blocks-1, -1, -1):
+        for i in range(self.nb_blocks-1, -1, -1):
             self.decoder_blocks.append(self.decoder_class(  nb_classes = self.nb_classes,
                                                             conv_kernel_size=3, 
                                                             up_kernel_size=2, 
