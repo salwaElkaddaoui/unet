@@ -1,8 +1,11 @@
 import tensorflow as tf
 from batch_normalization import BatchNormalization
 
-class UnetDecoderBlock:
+class UnetDecoderBlock(tf.Module):
     def __init__(self, nb_classes, conv_kernel_size, up_kernel_size, nb_in_channels, nb_out_channels, padding, initializer="he_normal", use_batchnorm=True, is_last=False):
+        
+        
+        super().__init__()
         self.nb_classes = nb_classes
         self.nb_in_channels = nb_in_channels
         self.nb_out_channels = nb_out_channels
@@ -11,19 +14,22 @@ class UnetDecoderBlock:
         self.padding = padding
         self.use_batchnorm = use_batchnorm
         self.is_last = is_last
-
+        
         if initializer=="he_normal":
             self.initializer = tf.compat.v1.initializers.he_normal()
-        if use_batchnorm:
-            self.batch_norm0 = BatchNormalization(nb_channels=self.nb_out_channels)
-            self.batch_norm1 = BatchNormalization(nb_channels=self.nb_out_channels)
-        
+
         #kernels definition
         self.up = tf.Variable(self.initializer(shape=[self.up_kernel_size, self.up_kernel_size, self.nb_out_channels, self.nb_in_channels])) # conv2d_transpose (upsampling) [height, width, nb_out_channels, nb_in_channels]
         self.conv0 = tf.Variable(self.initializer([self.conv_kernel_size, self.conv_kernel_size, self.nb_in_channels, self.nb_out_channels]))  # conv2d [Conv_kernel, nb_input_channels, nb_output_channels]
         self.conv1 = tf.Variable(self.initializer([self.conv_kernel_size, self.conv_kernel_size, self.nb_out_channels, self.nb_out_channels]))  # conv2d [Conv_kernel, nb_input_channels, nb_output_channels]
+
         if self.is_last:
-            self.last_conv = tf.Variable(self.initializer([1, 1, self.nb_out_channels, self.nb_classes]))
+            self.last_conv = tf.Variable(self.initializer([1, 1, self.nb_out_channels, self.nb_classes+1]))
+
+        if use_batchnorm:
+            self.batch_norm0 = BatchNormalization(nb_channels=self.nb_out_channels)
+            self.batch_norm1 = BatchNormalization(nb_channels=self.nb_out_channels)
+
     
     def __call__(self, x):
         raise NotImplementedError("Subclasses must implement the `__call__` method.")
@@ -43,9 +49,9 @@ class BasicDecoderBlock(UnetDecoderBlock):
             """
             we assume that in all tensors flowing through the model: H==W
             """
-            shape_diff = max(t1[1], t2[1])-min(t1[1], t2[1])
+            shape_diff = tf.maximum(t1[1], t2[1])-tf.minimum(t1[1], t2[1])
             start = shape_diff//2 
-            end = start + min(t1[1], t2[1])
+            end = start + tf.minimum(t1[1], t2[1])
             return start, end
         
         up = tf.nn.conv2d_transpose(    input=previous_decoder_output, \

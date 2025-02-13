@@ -1,8 +1,10 @@
 import tensorflow as tf
 from batch_normalization import BatchNormalization
 
-class UnetBottleneck:
+class UnetBottleneck(tf.Module):
     def __init__(self, conv_kernel_size, nb_in_channels, nb_out_channels, padding, initializer="he_normal", use_batchnorm=True):
+        
+        super().__init__()
         self.nb_in_channels = nb_in_channels
         self.nb_out_channels = nb_out_channels
         self.conv_kernel_size = conv_kernel_size
@@ -11,15 +13,15 @@ class UnetBottleneck:
 
         if initializer=="he_normal":
             self.initializer = tf.compat.v1.initializers.he_normal()
+
+        self.conv0 = tf.Variable(self.initializer(shape=[self.conv_kernel_size, self.conv_kernel_size, self.nb_in_channels, self.nb_out_channels])) #[Conv_kernel, nb_input_channels, nb_output_channels]
+        self.conv1 = tf.Variable(self.initializer(shape=[self.conv_kernel_size, self.conv_kernel_size, self.nb_out_channels, self.nb_out_channels]))
+        
         if use_batchnorm:
             self.batch_norm0 = BatchNormalization(nb_channels=self.nb_out_channels)
             self.batch_norm1 = BatchNormalization(nb_channels=self.nb_out_channels)
+            
         
-        # kernels definition
-        self.conv0 = tf.Variable(self.initializer(shape=[self.conv_kernel_size, self.conv_kernel_size, self.nb_in_channels, self.nb_out_channels])) #[Conv_kernel, nb_input_channels, nb_output_channels]
-        self.conv1 = tf.Variable(self.initializer(shape=[self.conv_kernel_size, self.conv_kernel_size, self.nb_out_channels, self.nb_out_channels]))
-
-
     def __call__(self, x):
         raise NotImplementedError("Subclasses must implement the `__call__` method.")
 
