@@ -12,7 +12,7 @@ BLOCK_FACTORY = {
 class Unet(tf.Module):
 
     def __init__(self, in_image_depth: int, nb_classes: int, nb_blocks: int=4, block_type='basic', 
-                 padding: str='VALID', nb_initial_filters: int=64, use_batchnorm=True):
+                 padding: str='SAME', nb_initial_filters: int=64, use_batchnorm=True):
         """
         in_image_depth: number of chennels (depth) of theinput image of the network
         nb_classes: The number of output classes for the segmentation task.
@@ -75,7 +75,6 @@ class Unet(tf.Module):
                                                             initializer="he_normal", 
                                                             use_batchnorm=self.use_batchnorm,
                                                             use_dropout=True if i >= self.nb_blocks-2 else False)) #use dropout in the last 2 blocks of the contractive path
-            
         
         self.bottleneck = self.bottleneck_class(conv_kernel_size=3, 
                                                 nb_in_channels=self.nb_initial_fitlers*2**(self.nb_blocks-1) , 
