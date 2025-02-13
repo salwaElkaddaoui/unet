@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-def loss(self, logits, labels):
+def loss(logits, labels):
     # pixel-wise softmax
     softmax = tf.nn.softmax(logits, axis=-1)
     softmax = tf.clip_by_value(softmax, 1e-7, 1.0 - 1e-7) #to avoid log(0)
