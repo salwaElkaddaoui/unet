@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-def iou(y_pred, y_true, num_classes):
+def compute_iou(y_pred, y_true, num_classes):
     """
     num_classes = number of foreground classes + 1 (we add 1 for the background)
     """
@@ -19,12 +19,11 @@ def iou(y_pred, y_true, num_classes):
     
     return tf.reduce_mean(iou_per_class)
 
-
-def pixel_accuracy(y_pred, y_true):
+def compute_pixel_accuracy(y_pred, y_true):
     y_pred = tf.argmax(y_pred, axis=-1)  # get the class index
     correct = tf.equal(y_pred, y_true)  
     accuracy = tf.reduce_mean(tf.cast(correct, tf.float32))
     return accuracy
 
-def pixel_error(y_pred, y_true):
-    return 1-pixel_accuracy(y_pred, y_true)
+def compute_pixel_error(y_pred, y_true):
+    return 1-compute_pixel_accuracy(y_pred, y_true)
