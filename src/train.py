@@ -6,9 +6,6 @@ import tensorflow as tf
 
 from metrics import compute_iou, compute_pixel_accuracy
 
-import datetime
-log_dir = "logs/train_" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-
 class Trainer:
     def __init__(self, loss_fn, optimizer):
         self.loss_fn = loss_fn
@@ -26,9 +23,14 @@ class Trainer:
             self.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
         return loss, miou, iou, pixel_accuracy
 
-
-    def __call__(self, model, dataset, epochs):
+    def __call__(self, model, dataset, epochs, checkpoint_dir, log_dir):
+        """
+        Train model and save checkpoints
+        """
         writer = tf.summary.create_file_writer(log_dir)
+        checkpoint = tf.train.Checkpoint(model=model, optimizer=self.optimizer)
+        checkpoint_manager = tf.train.CheckpointManager(checkpoint, checkpoint_dir, max_to_keep=1)
+
         num_iterations = 0
         for epoch in range(epochs):
             for iteration, (image_batch, mask_batch) in enumerate(dataset):
@@ -45,3 +47,5 @@ class Trainer:
                     tf.summary.scalar(name="Mean IoU", data=miou, step=num_iterations)
                     for idx, element in enumerate(iou):
                         tf.summary.scalar(name="IoU Class i"+str(idx)+": ", data=element, step=num_iterations)
+            checkpoint_manager.save()
+        # tf.saved_model.save(model, "./saved_model")
