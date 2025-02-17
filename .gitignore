@@ -3,3 +3,5 @@ __pycache__/*
 logs/*
 src/logs/*
 *.ipynb
+checkpoints/*
+saved_model/*
