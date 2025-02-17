@@ -45,14 +45,6 @@ class BasicDecoderBlock(UnetDecoderBlock):
         super().__init__(nb_classes, conv_kernel_size, up_kernel_size, nb_in_channels, nb_out_channels, padding, initializer, use_batchnorm, is_last)
                
     def __call__(self, previous_decoder_output, opposite_encoder_output, is_training):
-        def compute_concat_dim(t1, t2):
-            """
-            we assume that in all tensors flowing through the model: H==W
-            """
-            shape_diff = tf.maximum(t1[1], t2[1])-tf.minimum(t1[1], t2[1])
-            start = shape_diff//2 
-            end = start + tf.minimum(t1[1], t2[1])
-            return start, end
         
         up = tf.nn.conv2d_transpose(    input=previous_decoder_output, \
                                         filters=self.up, \
@@ -60,15 +52,25 @@ class BasicDecoderBlock(UnetDecoderBlock):
                                         strides=[1, 2, 2, 1], \
                                         padding=self.padding)
         
-        start, end = compute_concat_dim(tf.shape(opposite_encoder_output), tf.shape(up))
         if tf.shape(opposite_encoder_output)[1] < tf.shape(up)[1]:
+            shape_diff = tf.shape(up) - tf.shape(opposite_encoder_output) 
+            padding = [
+                [0, 0],  # No padding for batch dimension
+                [shape_diff[1]//2, (shape_diff[1]+1)//2],  # Pad height (before and after)
+                [shape_diff[2]//2, (shape_diff[2]+1)//2],  # Pad width (before and after)
+                [0, 0]  # No padding for channels
+            ]
             concat = tf.concat( [
-                                    opposite_encoder_output,
-                                    up[:, start:end, start:end, :]
+                                    tf.pad(opposite_encoder_output, padding),
+                                    up
+                                    # up[:, start:end, start:end, :]
                                 ],
                                 axis=-1)
         else:
-             concat = tf.concat( [
+            shape_diff = tf.shape(opposite_encoder_output)[1] - tf.shape(up)[1]# I assume that H==W, which means tf.shape(up)[1] == tf.shape(up)[2]
+            start = shape_diff//2 
+            end = start + tf.shape(up)[1]
+            concat = tf.concat( [
                                     opposite_encoder_output[:, start:end, start:end, :],
                                     up
                                 ],
