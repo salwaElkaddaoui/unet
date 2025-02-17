@@ -14,9 +14,12 @@ class UnetBottleneck(tf.Module):
         if initializer=="he_normal":
             self.initializer = tf.compat.v1.initializers.he_normal()
 
-        self.conv0 = tf.Variable(self.initializer(shape=[self.conv_kernel_size, self.conv_kernel_size, self.nb_in_channels, self.nb_out_channels])) #[Conv_kernel, nb_input_channels, nb_output_channels]
-        self.conv1 = tf.Variable(self.initializer(shape=[self.conv_kernel_size, self.conv_kernel_size, self.nb_out_channels, self.nb_out_channels]))
+        self.kernel0 = tf.Variable(self.initializer(shape=[self.conv_kernel_size, self.conv_kernel_size, self.nb_in_channels, self.nb_out_channels])) #[Conv_kernel, nb_input_channels, nb_output_channels]
+        self.kernel1 = tf.Variable(self.initializer(shape=[self.conv_kernel_size, self.conv_kernel_size, self.nb_out_channels, self.nb_out_channels]))
         
+        self.bias0 = tf.Variable(tf.zeros(shape=[self.nb_out_channels]))
+        self.bias1 = tf.Variable(tf.zeros(shape=[self.nb_out_channels]))
+
         if use_batchnorm:
             self.batch_norm0 = BatchNormalization(nb_channels=self.nb_out_channels)
             self.batch_norm1 = BatchNormalization(nb_channels=self.nb_out_channels)
@@ -35,12 +38,14 @@ class BasicBottleneck(UnetBottleneck):
         super().__init__(conv_kernel_size, nb_in_channels, nb_out_channels, padding, initializer, use_batchnorm)
 
     def __call__(self, input, is_training):
-        conv = tf.nn.conv2d(input=input, filters=self.conv0, strides=[1, 1, 1, 1], padding=self.padding)
+        conv = tf.nn.conv2d(input=input, filters=self.kernel0, strides=[1, 1, 1, 1], padding=self.padding)
+        conv = tf.nn.bias_add(conv, self.bias0)
         if self.use_batchnorm:
             conv = self.batch_norm0(conv, training=is_training)
         conv = tf.nn.relu(conv)
 
-        conv = tf.nn.conv2d(input=conv, filters=self.conv1, strides=[1, 1, 1, 1], padding=self.padding)
+        conv = tf.nn.conv2d(input=conv, filters=self.kernel1, strides=[1, 1, 1, 1], padding=self.padding)
+        conv = tf.nn.bias_add(conv, self.bias1)
         if self.use_batchnorm:
             conv = self.batch_norm1(conv, training=is_training)
         conv = tf.nn.relu(conv)
@@ -59,13 +64,16 @@ class ResidualBottleneck(UnetBottleneck):
 
 
     def __call__(self, input, is_training):
-        conv = tf.nn.conv2d(input=input, filters=self.conv0, strides=[1, 1, 1, 1], padding=self.padding)
+        conv = tf.nn.conv2d(input=input, filters=self.kernel0, strides=[1, 1, 1, 1], padding=self.padding)
+        conv = tf.nn.bias_add(conv, self.bias0)
+        
         if self.use_batchnorm:
             conv = self.batch_norm0(conv, training=is_training)
         conv = tf.nn.relu(conv)
 
-        conv = tf.nn.conv2d(input=conv, filters=self.conv1, strides=[1, 1, 1, 1], padding=self.padding)
-
+        conv = tf.nn.conv2d(input=conv, filters=self.kernel1, strides=[1, 1, 1, 1], padding=self.padding)
+        conv = tf.nn.bias_add(conv, self.bias1)
+        
         #the skip connection:
         
         # making sure that the input and the output of the previous conv operation 
