@@ -24,7 +24,7 @@ class UnetDecoderBlock(tf.Module):
         self.conv1 = tf.Variable(self.initializer([self.conv_kernel_size, self.conv_kernel_size, self.nb_out_channels, self.nb_out_channels]))  # conv2d [Conv_kernel, nb_input_channels, nb_output_channels]
 
         if self.is_last:
-            self.last_conv = tf.Variable(self.initializer([1, 1, self.nb_out_channels, self.nb_classes+1]))
+            self.last_conv = tf.Variable(self.initializer([1, 1, self.nb_out_channels, self.nb_classes]))
 
         if use_batchnorm:
             self.batch_norm0 = BatchNormalization(nb_channels=self.nb_out_channels)
@@ -85,10 +85,13 @@ class BasicDecoderBlock(UnetDecoderBlock):
         conv = tf.nn.relu(conv)
 
         if self.is_last:
-            conv = tf.nn.conv2d(conv, self.last_conv, strides=[1, 1, 1, 1], padding=self.padding)
-
-        return conv
-
+            logits = tf.nn.conv2d(conv, self.last_conv, strides=[1, 1, 1, 1], padding=self.padding)
+            probabilities = tf.nn.softmax(logits, axis=-1)
+            probabilities = tf.clip_by_value(probabilities, 1e-7, 1.0 - 1e-7) #to avoid log(0)
+    
+            return probabilities
+        else:
+            return conv
 
 class ResidualDecoderBlock(UnetDecoderBlock):
     """
@@ -142,6 +145,10 @@ class ResidualDecoderBlock(UnetDecoderBlock):
         
         conv = tf.nn.relu(conv)
         if self.is_last:
-            conv = tf.nn.conv2d(conv, self.last_conv, strides=[1, 1, 1, 1], padding=self.padding)
-
-        return conv
+            logits = tf.nn.conv2d(conv, self.last_conv, strides=[1, 1, 1, 1], padding=self.padding)
+            probabilities = tf.nn.softmax(logits, axis=-1)
+            probabilities = tf.clip_by_value(probabilities, 1e-7, 1.0 - 1e-7) #to avoid log(0)
+    
+            return probabilities
+        else:
+            return conv
