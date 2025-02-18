@@ -18,7 +18,7 @@ class Predictor:
     @tf.function
     def predict(self, input_tensor):
         """Perform inference on a given input tensor."""
-        probabilities = self.model(input_tensor)
+        probabilities = self.model(input_tensor, is_training=False)
         predictions = tf.argmax(probabilities, axis=-1)
         return predictions
 
