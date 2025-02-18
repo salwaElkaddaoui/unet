@@ -112,29 +112,54 @@ class ResidualDecoderBlock(UnetDecoderBlock):
     def __init__(self, nb_classes, conv_kernel_size, deconv_kernel_size, nb_in_channels, nb_out_channels, padding, initializer="he_normal", use_batchnorm=True, is_last=False):
         super().__init__(nb_classes, conv_kernel_size, deconv_kernel_size, nb_in_channels, nb_out_channels, padding, initializer, use_batchnorm, is_last)
         
+        self.skip_connection_kernel = tf.Variable(self.initializer(shape=[1, 1, self.nb_in_channels, self.nb_out_channels])) # 1x1 conv2d 
+        self.skip_connection_bias = tf.Variable(tf.zeros(shape=[self.nb_out_channels]))
+
     def __call__(self, previous_decoder_output, opposite_encoder_output, is_training):
         deconv = tf.nn.conv2d_transpose(    input=previous_decoder_output, \
                                         filters=self.deconv_kernel, \
                                         output_shape=[
                                             tf.shape(previous_decoder_output)[0], \
-                                                      previous_decoder_output.shape[1]*2, \
-                                                        previous_decoder_output.shape[2]*2, \
-                                                            previous_decoder_output.shape[-1]//2 \
+                                                      tf.shape(previous_decoder_output)[1]*2, \
+                                                        tf.shape(previous_decoder_output)[2]*2, \
+                                                            tf.shape(previous_decoder_output)[-1]//2 \
                                                             ], \
                                         strides=[1, 2, 2, 1], \
                                         padding=self.padding)
         
         deconv = tf.nn.bias_add(deconv, self.deconv_bias) 
 
-        concat_shape_diff = tf.shape(opposite_encoder_output) - tf.shape(deconv) #we suppose that opposite_encoder_output.shape > up.shape
+        # concat_shape_diff = tf.shape(opposite_encoder_output) - tf.shape(deconv) #we suppose that opposite_encoder_output.shape > up.shape
                     
-        concat = tf.concat( values= [opposite_encoder_output[:, \
-                                                    concat_shape_diff[1]//2:deconv.shape[1]+((concat_shape_diff[1]+1)//2), \
-                                                    concat_shape_diff[2]//2:deconv.shape[2]+((concat_shape_diff[2]+1)//2), \
-                                                    :],\
-                                    deconv],\
-                            axis=-1) 
-        
+        # concat = tf.concat( values= [opposite_encoder_output[:, \
+        #                                             concat_shape_diff[1]//2:deconv.shape[1]+((concat_shape_diff[1]+1)//2), \
+        #                                             concat_shape_diff[2]//2:deconv.shape[2]+((concat_shape_diff[2]+1)//2), \
+        #                                             :],\
+        #                             deconv],\
+        #                     axis=-1) 
+        if tf.shape(opposite_encoder_output)[1] < tf.shape(deconv)[1]:
+            shape_diff = tf.shape(deconv) - tf.shape(opposite_encoder_output) 
+            padding = [
+                [0, 0],  # No padding for batch dimension
+                [shape_diff[1]//2, (shape_diff[1]+1)//2],  # Pad height (before and after)
+                [shape_diff[2]//2, (shape_diff[2]+1)//2],  # Pad width (before and after)
+                [0, 0]  # No padding for channels
+            ]
+            concat = tf.concat( [
+                                    tf.pad(opposite_encoder_output, padding),
+                                    deconv
+                                    # deconv[:, start:end, start:end, :]
+                                ],
+                                axis=-1)
+        else:
+            shape_diff = tf.shape(opposite_encoder_output)[1] - tf.shape(deconv)[1]# I assume that H==W, which means tf.shape(up)[1] == tf.shape(up)[2]
+            start = shape_diff//2 
+            end = start + tf.shape(deconv)[1]
+            concat = tf.concat( [
+                                    opposite_encoder_output[:, start:end, start:end, :],
+                                    deconv
+                                ],
+                                axis=-1)
         conv = tf.nn.conv2d(concat, self.conv0, strides=[1, 1, 1, 1], padding=self.padding)
         conv = tf.nn.bias_add(conv, self.bias0)
         if self.use_batchnorm:
@@ -145,7 +170,10 @@ class ResidualDecoderBlock(UnetDecoderBlock):
         conv = tf.nn.bias_add(conv, self.bias1)
         
         # the skip connection
-        shape_diff = tf.shape(concat) - tf.shape(conv)
+        concat_depth_changed = tf.nn.conv2d(input=concat, filters=self.skip_connection_kernel, strides=[1, 1, 1, 1], padding=self.padding)
+        concat_depth_changed = tf.nn.bias_add(concat_depth_changed, self.skip_connection_bias)
+        
+        shape_diff = tf.shape(concat_depth_changed) - tf.shape(conv)
         padding = [
             [0, 0],  # No padding for batch dimension
             [shape_diff[1]//2, (shape_diff[1]+1)//2],  # Pad height (before and after)
@@ -153,7 +181,7 @@ class ResidualDecoderBlock(UnetDecoderBlock):
             [0, 0]  # No padding for channels
         ]
         conv = tf.pad(conv, paddings=padding)
-        conv = tf.add(concat, conv)
+        conv = tf.add(concat_depth_changed, conv)
         if self.use_batchnorm:
             conv = self.batch_norm1(conv, training=is_training)
         

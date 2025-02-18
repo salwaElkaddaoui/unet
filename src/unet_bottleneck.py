@@ -62,6 +62,9 @@ class ResidualBottleneck(UnetBottleneck):
     def __init__(self, conv_kernel_size, nb_in_channels, nb_out_channels, padding, initializer="he_normal", use_batchnorm=True):
         super().__init__(conv_kernel_size, nb_in_channels, nb_out_channels, padding, initializer, use_batchnorm)
 
+        self.skip_connection_kernel = tf.Variable(self.initializer([1, 1, self.nb_in_channels, self.nb_out_channels])) # 1x1 conv2d 
+        self.skip_connection_bias = tf.Variable(tf.zeros(shape=[self.nb_out_channels]))
+
 
     def __call__(self, input, is_training):
         conv = tf.nn.conv2d(input=input, filters=self.kernel0, strides=[1, 1, 1, 1], padding=self.padding)
@@ -76,9 +79,11 @@ class ResidualBottleneck(UnetBottleneck):
         
         #the skip connection:
         
+        input_depth_changed = tf.nn.conv2d(input=input, filters=self.skip_connection_kernel, strides=[1, 1, 1, 1], padding=self.padding)
+        input_depth_changed = tf.nn.bias_add(input_depth_changed, self.skip_connection_bias)
         # making sure that the input and the output of the previous conv operation 
         # have the same height and width before adding them up
-        shape_diff = tf.shape(input) - tf.shape(conv)
+        shape_diff = tf.shape(input_depth_changed) - tf.shape(conv)
         padding = [
             [0, 0],  # No padding for batch dimension
             [shape_diff[1]//2, (shape_diff[1]+1)//2],  # Pad height (before and after)
@@ -86,7 +91,7 @@ class ResidualBottleneck(UnetBottleneck):
             [0, 0]  # No padding for channels
         ]
         conv = tf.pad(conv, paddings=padding)
-        conv = tf.add(input, conv)
+        conv = tf.add(input_depth_changed, conv)
         if self.use_batchnorm:
             conv = self.batch_norm1(conv, training=is_training)
         conv = tf.nn.relu(conv)
