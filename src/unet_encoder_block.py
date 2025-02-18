@@ -2,7 +2,7 @@ import tensorflow as tf
 from batch_normalization import BatchNormalization
 
 class UnetEncoderBlock(tf.Module):
-    def __init__(self, conv_kernel_size, nb_in_channels, nb_out_channels, padding, initializer="he_normal", use_batchnorm=True):
+    def __init__(self, conv_kernel_size, nb_in_channels, nb_out_channels, padding, initializer="he_normal", use_batchnorm=True, use_dropout=False):
         
         super().__init__()
         self.conv_kernel_size = conv_kernel_size
@@ -10,6 +10,7 @@ class UnetEncoderBlock(tf.Module):
         self.nb_out_channels = nb_out_channels
         self.padding = padding
         self.use_batchnorm = use_batchnorm
+        self.use_dropout = use_dropout
 
         if initializer=="he_normal":
             self.initializer = tf.compat.v1.initializers.he_normal()
@@ -35,8 +36,8 @@ class BasicEncoderBlock(UnetEncoderBlock):
     conv2d -> batchnorm -> relu -> conv2d -> batchnorm -> relu ->  pool2d
     """
     def __init__(self, conv_kernel_size, nb_in_channels, nb_out_channels, padding, initializer="he_normal", use_batchnorm=True, use_dropout=False):
-        super().__init__(conv_kernel_size, nb_in_channels, nb_out_channels, padding, initializer, use_batchnorm)
-        self.use_dropout = use_dropout
+        super().__init__(conv_kernel_size, nb_in_channels, nb_out_channels, padding, initializer, use_batchnorm, use_dropout)
+        
 
     def __call__(self, input, is_training):
         conv = tf.nn.conv2d(input=input, filters=self.kernel0, strides=[1, 1, 1, 1], padding=self.padding)
@@ -51,7 +52,7 @@ class BasicEncoderBlock(UnetEncoderBlock):
             conv = self.batch_norm1(conv, training=is_training)
         conv = tf.nn.relu(conv)
 
-        if self.use_dropout:
+        if (self.use_dropout and is_training):
             conv = tf.nn.dropout(x=conv, rate=0.5)
 
         pool = tf.nn.max_pool(conv, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding=self.padding)
