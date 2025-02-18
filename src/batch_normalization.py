@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-class BatchNormalization:
+class BatchNormalization(tf.Module):
     def __init__(self, nb_channels, epsilon=1e-5, momentum=0.9):
         """
         Batch Normalization class.
@@ -33,17 +33,18 @@ class BatchNormalization:
             tf.Tensor: Batch-normalized output.
         """
         if training:
-            # Compute batch statistics
-            batch_mean, batch_variance = tf.nn.moments(x, axes=list(range(len(x.shape) - 1)))
+            batch_mean, batch_variance = tf.nn.moments(x, axes=list(range(len(x.shape) - 1)), keepdims=False)
             
-            # Update moving averages
             self.moving_mean.assign(self.momentum * self.moving_mean + (1 - self.momentum) * batch_mean)
             self.moving_variance.assign(self.momentum * self.moving_variance + (1 - self.momentum) * batch_variance)
             
             mean, variance = batch_mean, batch_variance
         else:
-            # Use moving averages for inference
             mean, variance = self.moving_mean, self.moving_variance
+        
+        mean = tf.reshape(mean, [1, 1, 1, -1])
+        variance = tf.reshape(variance, [1, 1, 1, -1])
+        gamma = tf.reshape(self.gamma, [1, 1, 1, -1])
+        beta = tf.reshape(self.beta, [1, 1, 1, -1])
 
-        # Apply batch normalization
-        return tf.nn.batch_normalization(x, mean, variance, offset=self.beta, scale=self.gamma, variance_epsilon=self.epsilon)
+        return tf.nn.batch_normalization(x, mean, variance, offset=beta, scale=gamma, variance_epsilon=self.epsilon)
