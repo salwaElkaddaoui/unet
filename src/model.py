@@ -12,7 +12,7 @@ BLOCK_FACTORY = {
 class Unet(tf.Module):
 
     def __init__(self, in_image_depth: int, nb_classes: int, nb_blocks: int=4, block_type='basic', 
-                 padding: str='SAME', nb_initial_filters: int=64, use_batchnorm=True):
+                 padding: str='SAME', nb_initial_filters: int=64, initializer="he_normal", use_batchnorm=True, use_dropout=False):
         """
         in_image_depth: number of chennels (depth) of theinput image of the network
         nb_classes: The number of output classes for the segmentation task.
@@ -55,11 +55,9 @@ class Unet(tf.Module):
             raise ValueError("Number of initial filter should be greater or equal to 1")
         self.nb_initial_fitlers = nb_initial_filters
         self.use_batchnorm = use_batchnorm
+        self.use_dropout = use_dropout
         
-
-        # self.initializer = tf.compat.v1.initializers.he_normal()
-
-
+        self.initializer = initializer
 
         if not (block_type.lower() in ['basic', 'resnet']):
             raise ValueError(f"Block type {block_type.lower()}. Valid values: \'basic\', \'resnet\'")
@@ -72,14 +70,16 @@ class Unet(tf.Module):
                                                             nb_in_channels=self.nb_initial_fitlers*2**(i-1) if i>0 else self.in_image_depth, 
                                                             nb_out_channels=self.nb_initial_fitlers*2**i, 
                                                             padding=self.padding,
-                                                            initializer="he_normal", 
+                                                            initializer=self.initializer, 
                                                             use_batchnorm=self.use_batchnorm,
-                                                            use_dropout=True if i >= self.nb_blocks-2 else False)) #use dropout in the last 2 blocks of the contractive path
+                                                            use_dropout=self.use_dropout if i >= self.nb_blocks-2 else False)) #use dropout in the last 2 blocks of the contractive path
         
         self.bottleneck = self.bottleneck_class(conv_kernel_size=3, 
                                                 nb_in_channels=self.nb_initial_fitlers*2**(self.nb_blocks-1) , 
                                                 nb_out_channels=self.nb_initial_fitlers*2**nb_blocks, 
-                                                padding=self.padding, initializer="he_normal", use_batchnorm=self.use_batchnorm)
+                                                padding=self.padding, 
+                                                initializer=self.initializer, 
+                                                use_batchnorm=self.use_batchnorm)
 
         for i in range(self.nb_blocks-1, -1, -1):
             self.decoder_blocks.append(self.decoder_class(  nb_classes = self.nb_classes,
@@ -88,7 +88,7 @@ class Unet(tf.Module):
                                                             nb_in_channels=self.nb_initial_fitlers*2**(i+1), #ceci sous-entend que i commence de nb_blocks-1
                                                             nb_out_channels=self.nb_initial_fitlers*2**i, 
                                                             padding=self.padding,
-                                                            initializer="he_normal", use_batchnorm=self.use_batchnorm,
+                                                            initializer=self.initializer, use_batchnorm=self.use_batchnorm,
                                                             is_last=True if i==0 else False
                                     ))
 
