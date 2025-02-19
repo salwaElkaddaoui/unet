@@ -1,33 +1,21 @@
+from abc import abstractmethod
 import tensorflow as tf
-from batch_normalization import BatchNormalization
+from unet_block import UnetBlock
 
-class UnetEncoderBlock(tf.Module):
+class UnetEncoderBlock(UnetBlock):
+    
     def __init__(self, conv_kernel_size, nb_in_channels, nb_out_channels, padding, initializer="he_normal", use_batchnorm=True, use_dropout=False):
-        
-        super().__init__()
-        self.conv_kernel_size = conv_kernel_size
-        self.nb_in_channels = nb_in_channels
-        self.nb_out_channels = nb_out_channels
-        self.padding = padding
-        self.use_batchnorm = use_batchnorm
+        super().__init__(conv_kernel_size, nb_in_channels, nb_out_channels, padding, initializer, use_batchnorm)
         self.use_dropout = use_dropout
 
-        if initializer=="he_normal":
-            self.initializer = tf.compat.v1.initializers.he_normal()
+    def apply_dropout(self, conv, is_training):
+        if self.use_dropout and is_training:
+            return tf.nn.dropout(conv, rate=0.5)
+        return conv
 
-        self.kernel0 = tf.Variable(self.initializer(shape=[self.conv_kernel_size, self.conv_kernel_size, self.nb_in_channels, self.nb_out_channels])) #[Conv_kernel, nb_input_channels, nb_output_channels]
-        self.kernel1 = tf.Variable(self.initializer(shape=[self.conv_kernel_size, self.conv_kernel_size, self.nb_out_channels, self.nb_out_channels]))
-
-        self.bias0 = tf.Variable(tf.zeros(shape=[self.nb_out_channels]))
-        self.bias1 = tf.Variable(tf.zeros(shape=[self.nb_out_channels]))
-
-        if use_batchnorm:
-            self.batch_norm0 = BatchNormalization(nb_channels=self.nb_out_channels)
-            self.batch_norm1 = BatchNormalization(nb_channels=self.nb_out_channels)
-
+    @abstractmethod
     def __call__(self, x):
-        raise NotImplementedError("Subclasses must implement the `__call__` method.")
-
+        pass
 
 class BasicEncoderBlock(UnetEncoderBlock):
     """
@@ -40,21 +28,10 @@ class BasicEncoderBlock(UnetEncoderBlock):
         
 
     def __call__(self, input, is_training):
-        conv = tf.nn.conv2d(input=input, filters=self.kernel0, strides=[1, 1, 1, 1], padding=self.padding)
-        conv = tf.nn.bias_add(conv, self.bias0)
-        if self.use_batchnorm:
-            conv = self.batch_norm0(conv, training=is_training)
-        conv = tf.nn.relu(conv)
-
-        conv = tf.nn.conv2d(input=conv, filters=self.kernel1, strides=[1, 1, 1, 1], padding=self.padding)
-        conv = tf.nn.bias_add(conv, self.bias1)
-        if self.use_batchnorm:
-            conv = self.batch_norm1(conv, training=is_training)
-        conv = tf.nn.relu(conv)
-
-        if (self.use_dropout and is_training):
-            conv = tf.nn.dropout(x=conv, rate=0.5)
-
+        
+        conv = self.apply_conv(input, self.kernel0, self.bias0, self.batch_norm0, is_training)
+        conv = self.apply_conv(conv, self.kernel1, self.bias1, self.batch_norm1, is_training)
+        conv = self.apply_dropout(conv, is_training)
         pool = tf.nn.max_pool(conv, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding=self.padding)
         return conv, pool
 
@@ -77,16 +54,12 @@ class ResidualEncoderBlock(UnetEncoderBlock):
         self.skip_connection_bias = tf.Variable(tf.zeros(shape=[self.nb_out_channels]))
 
     def __call__(self, input, is_training):
-        conv = tf.nn.conv2d(input=input, filters=self.kernel0, strides=[1, 1, 1, 1], padding=self.padding)
-        conv = tf.nn.bias_add(conv, self.bias0)
-        if self.use_batchnorm:
-            conv = self.batch_norm0(conv, training=is_training)
-        conv = tf.nn.relu(conv)
-
+        
+        conv = self.apply_conv(input, self.kernel0, self.bias0, self.batch_norm0, is_training)
         conv = tf.nn.conv2d(input=conv, filters=self.kernel1, strides=[1, 1, 1, 1], padding=self.padding)
         conv = tf.nn.bias_add(conv, self.bias1)
-        #the skip connection:
         
+        #the skip connection:
         # making sure that the input and the output of the previous conv operation 
         # have the same height and width before adding them up
         input_depth_changed = tf.nn.conv2d(input=input, filters=self.skip_connection_kernel, strides=[1, 1, 1, 1], padding=self.padding)

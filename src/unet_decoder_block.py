@@ -1,41 +1,24 @@
 import tensorflow as tf
-from batch_normalization import BatchNormalization
+from abc import abstractmethod
+from unet_block import UnetBlock
 
-class UnetDecoderBlock(tf.Module):
+class UnetDecoderBlock(UnetBlock):
     def __init__(self, nb_classes, conv_kernel_size, deconv_kernel_size, nb_in_channels, nb_out_channels, padding, initializer="he_normal", use_batchnorm=True, is_last=False):
-        
-        super().__init__()
+
+        super().__init__(conv_kernel_size, nb_in_channels, nb_out_channels, padding, initializer, use_batchnorm)
         self.nb_classes = nb_classes
-        self.nb_in_channels = nb_in_channels
-        self.nb_out_channels = nb_out_channels
         self.deconv_kernel_size = deconv_kernel_size
-        self.conv_kernel_size = conv_kernel_size
-        self.padding = padding
-        self.use_batchnorm = use_batchnorm
         self.is_last = is_last
-        
-        if initializer=="he_normal":
-            self.initializer = tf.compat.v1.initializers.he_normal()
-
         self.deconv_kernel = tf.Variable(self.initializer(shape=[self.deconv_kernel_size, self.deconv_kernel_size, self.nb_out_channels, self.nb_in_channels])) # conv2d_transpose (upsampling) [height, width, nb_out_channels, nb_in_channels]
-        self.conv0 = tf.Variable(self.initializer([self.conv_kernel_size, self.conv_kernel_size, self.nb_in_channels, self.nb_out_channels]))  # conv2d [Conv_kernel, nb_input_channels, nb_output_channels]
-        self.conv1 = tf.Variable(self.initializer([self.conv_kernel_size, self.conv_kernel_size, self.nb_out_channels, self.nb_out_channels]))  # conv2d [Conv_kernel, nb_input_channels, nb_output_channels]
-
         self.deconv_bias = tf.Variable(tf.zeros(shape=[self.nb_out_channels]))
-        self.bias0 = tf.Variable(tf.zeros(shape=[self.nb_out_channels]))
-        self.bias1 = tf.Variable(tf.zeros(shape=[self.nb_out_channels]))
         
         if self.is_last:
             self.last_kernel = tf.Variable(self.initializer([1, 1, self.nb_out_channels, self.nb_classes]))
             self.last_bias = tf.Variable(tf.zeros(shape=[self.nb_classes]))
 
-        if use_batchnorm:
-            self.batch_norm0 = BatchNormalization(nb_channels=self.nb_out_channels)
-            self.batch_norm1 = BatchNormalization(nb_channels=self.nb_out_channels)
-
-    
+    @abstractmethod
     def __call__(self, x):
-        raise NotImplementedError("Subclasses must implement the `__call__` method.")
+        pass
 
 
 class BasicDecoderBlock(UnetDecoderBlock):
@@ -81,17 +64,9 @@ class BasicDecoderBlock(UnetDecoderBlock):
                                 ],
                                 axis=-1)
             
-        conv = tf.nn.conv2d(concat, self.conv0, strides=[1, 1, 1, 1], padding=self.padding)
-        conv = tf.nn.bias_add(conv, self.bias0)
-        if self.use_batchnorm:
-            conv  = self.batch_norm0(conv, training=is_training)
-        conv = tf.nn.relu(conv)
 
-        conv = tf.nn.conv2d(conv, self.conv1, strides=[1, 1, 1, 1], padding=self.padding)
-        conv = tf.nn.bias_add(conv, self.bias1)
-        if self.use_batchnorm:
-            conv  = self.batch_norm1(conv, training=is_training)
-        conv = tf.nn.relu(conv)
+        conv = self.apply_conv(concat, self.kernel0, self.bias0, self.batch_norm0, is_training)
+        conv = self.apply_conv(conv, self.kernel1, self.bias1, self.batch_norm1, is_training)
 
         if self.is_last:
             conv = tf.nn.conv2d(conv, self.last_kernel, strides=[1, 1, 1, 1], padding=self.padding)
@@ -129,14 +104,6 @@ class ResidualDecoderBlock(UnetDecoderBlock):
         
         deconv = tf.nn.bias_add(deconv, self.deconv_bias) 
 
-        # concat_shape_diff = tf.shape(opposite_encoder_output) - tf.shape(deconv) #we suppose that opposite_encoder_output.shape > up.shape
-                    
-        # concat = tf.concat( values= [opposite_encoder_output[:, \
-        #                                             concat_shape_diff[1]//2:deconv.shape[1]+((concat_shape_diff[1]+1)//2), \
-        #                                             concat_shape_diff[2]//2:deconv.shape[2]+((concat_shape_diff[2]+1)//2), \
-        #                                             :],\
-        #                             deconv],\
-        #                     axis=-1) 
         if tf.shape(opposite_encoder_output)[1] < tf.shape(deconv)[1]:
             shape_diff = tf.shape(deconv) - tf.shape(opposite_encoder_output) 
             padding = [
@@ -160,13 +127,11 @@ class ResidualDecoderBlock(UnetDecoderBlock):
                                     deconv
                                 ],
                                 axis=-1)
-        conv = tf.nn.conv2d(concat, self.conv0, strides=[1, 1, 1, 1], padding=self.padding)
-        conv = tf.nn.bias_add(conv, self.bias0)
-        if self.use_batchnorm:
-            conv  = self.batch_norm0(conv, training=is_training)
-        conv = tf.nn.relu(conv)
 
-        conv = tf.nn.conv2d(conv, self.conv1, strides=[1, 1, 1, 1], padding=self.padding)
+        conv = self.apply_conv(concat, self.kernel0, self.bias0, self.batch_norm0, is_training)
+        
+        
+        conv = tf.nn.conv2d(conv, self.kernel1, strides=[1, 1, 1, 1], padding=self.padding)
         conv = tf.nn.bias_add(conv, self.bias1)
         
         # the skip connection
