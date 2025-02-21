@@ -72,12 +72,7 @@ class ResidualDecoderBlock(UnetDecoderBlock, ResidualMixin):
     def __call__(self, previous_decoder_output, opposite_encoder_output, is_training):
         concat = self.deconv_and_concat(previous_decoder_output, opposite_encoder_output)
         conv = self.apply_conv(concat, self.kernel0, self.bias0, self.batch_norm0, is_training)
-        conv = tf.nn.conv2d(conv, self.kernel1, strides=[1, 1, 1, 1], padding=self.padding)
-        conv = tf.nn.bias_add(conv, self.bias1)
-        conv = self.apply_skip_connection(concat, conv)
-        if self.use_batchnorm:
-            conv = self.batch_norm1(conv, training=is_training)
-        conv = tf.nn.relu(conv)
+        conv = self.apply_residual_conv(concat, conv, self.kernel1, self.bias1, self.batch_norm1, is_training)
         if self.is_last:
             return self.apply_head(conv)
         else:

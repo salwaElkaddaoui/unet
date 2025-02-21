@@ -28,11 +28,6 @@ class ResidualBottleneck(UnetBottleneck, ResidualMixin):
 
     def __call__(self, input, is_training):
         conv = self.apply_conv(input, self.kernel0, self.bias0, self.batch_norm0, is_training)
-        conv = tf.nn.conv2d(input=conv, filters=self.kernel1, strides=[1, 1, 1, 1], padding=self.padding)
-        conv = tf.nn.bias_add(conv, self.bias1)
-        conv = self.apply_skip_connection(input, conv)
-        if self.use_batchnorm:
-            conv = self.batch_norm1(conv, training=is_training)
-        conv = tf.nn.relu(conv)
+        conv = self.apply_residual_conv(input, conv, self.kernel1, self.bias1, self.batch_norm1, is_training)
         return conv
 

@@ -13,6 +13,9 @@ class UnetEncoderBlock(UnetBlock):
             return tf.nn.dropout(conv, rate=0.5)
         return conv
 
+    def apply_pooling(self, conv):
+        return tf.nn.max_pool(conv, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding=self.padding)
+
     @abstractmethod
     def __call__(self, x):
         pass
@@ -25,7 +28,7 @@ class BasicEncoderBlock(UnetEncoderBlock):
         conv = self.apply_conv(input, self.kernel0, self.bias0, self.batch_norm0, is_training)
         conv = self.apply_conv(conv, self.kernel1, self.bias1, self.batch_norm1, is_training)
         conv = self.apply_dropout(conv, is_training)
-        pool = tf.nn.max_pool(conv, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding=self.padding)
+        pool = self.apply_pooling(conv)
         return conv, pool
 
         
@@ -36,14 +39,8 @@ class ResidualEncoderBlock(UnetEncoderBlock, ResidualMixin):
 
     def __call__(self, input, is_training):
         conv = self.apply_conv(input, self.kernel0, self.bias0, self.batch_norm0, is_training)
-        conv = tf.nn.conv2d(input=conv, filters=self.kernel1, strides=[1, 1, 1, 1], padding=self.padding)
-        conv = tf.nn.bias_add(conv, self.bias1)
-        conv = self.apply_skip_connection(input, conv)
-        if self.use_batchnorm:
-            conv = self.batch_norm1(conv, training=is_training)
-        conv = tf.nn.relu(conv)
-        if (self.use_dropout and is_training):
-            conv = tf.nn.dropout(x=conv, rate=0.5)
-        pool = tf.nn.max_pool(conv, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding=self.padding)
+        conv = self.apply_residual_conv(input, conv, self.kernel1, self.bias1, self.batch_norm1, is_training)
+        conv = self.apply_dropout(conv, is_training)        
+        pool = self.apply_pooling(conv)
         return conv, pool
 

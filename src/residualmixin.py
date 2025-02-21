@@ -19,3 +19,11 @@ class ResidualMixin:
         ]
         conv = tf.pad(conv, paddings=padding)
         return tf.add(input_depth_changed, conv)
+
+    def apply_residual_conv(self, input, conv, kernel, bias, batch_norm, is_training):
+        conv = tf.nn.conv2d(conv, filters=kernel, strides=[1, 1, 1, 1], padding=self.padding)
+        conv = tf.nn.bias_add(conv, bias)
+        conv = self.apply_skip_connection(input, conv)
+        if self.use_batchnorm:
+            conv = batch_norm(conv, training=is_training)
+        return tf.nn.relu(conv)
