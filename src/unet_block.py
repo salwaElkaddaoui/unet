@@ -13,6 +13,8 @@ class UnetBlock(ABC, tf.Module):
         
         if initializer == "he_normal":
             self.initializer = tf.compat.v1.initializers.he_normal()
+        else:
+            self.initializer = tf.compat.v1.initializers.he_uniform()
 
         self.kernel0 = tf.Variable(self.initializer([self.conv_kernel_size, self.conv_kernel_size, self.nb_in_channels, self.nb_out_channels]))
         self.kernel1 = tf.Variable(self.initializer([self.conv_kernel_size, self.conv_kernel_size, self.nb_out_channels, self.nb_out_channels]))
