@@ -21,9 +21,6 @@ class UnetEncoderBlock(UnetBlock):
         pass
 
 class BasicEncoderBlock(UnetEncoderBlock):
-    def __init__(self, conv_kernel_size, nb_in_channels, nb_out_channels, padding, initializer="he_normal", use_batchnorm=True, use_dropout=False):
-        super().__init__(conv_kernel_size, nb_in_channels, nb_out_channels, padding, initializer, use_batchnorm, use_dropout)
-        
     def __call__(self, input, is_training):
         conv = self.apply_conv(input, self.kernel0, self.bias0, self.batch_norm0, is_training)
         conv = self.apply_conv(conv, self.kernel1, self.bias1, self.batch_norm1, is_training)
@@ -33,8 +30,8 @@ class BasicEncoderBlock(UnetEncoderBlock):
 
         
 class ResidualEncoderBlock(UnetEncoderBlock, ResidualMixin):
-    def __init__(self, conv_kernel_size, nb_in_channels, nb_out_channels, padding, initializer="he_normal", use_batchnorm=True, use_dropout=False):
-        super().__init__(conv_kernel_size, nb_in_channels, nb_out_channels, padding, initializer, use_batchnorm, use_dropout)
+    def __init__(self, *args, **kwargs):
+        super().__init__(self, *args, **kwargs)
         self.initialize_skip_connection()
 
     def __call__(self, input, is_training):

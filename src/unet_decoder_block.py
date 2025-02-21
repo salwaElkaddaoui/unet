@@ -52,9 +52,6 @@ class UnetDecoderBlock(UnetBlock):
 
 
 class BasicDecoderBlock(UnetDecoderBlock):
-    def __init__(self, nb_classes, conv_kernel_size, deconv_kernel_size, nb_in_channels, nb_out_channels, padding, initializer="he_normal", use_batchnorm=True, is_last=False):
-        super().__init__(nb_classes, conv_kernel_size, deconv_kernel_size, nb_in_channels, nb_out_channels, padding, initializer, use_batchnorm, is_last)
-               
     def __call__(self, previous_decoder_output, opposite_encoder_output, is_training):
         concat = self.deconv_and_concat(previous_decoder_output, opposite_encoder_output)
         conv = self.apply_conv(concat, self.kernel0, self.bias0, self.batch_norm0, is_training)
@@ -65,8 +62,8 @@ class BasicDecoderBlock(UnetDecoderBlock):
             return conv
 
 class ResidualDecoderBlock(UnetDecoderBlock, ResidualMixin):
-    def __init__(self, nb_classes, conv_kernel_size, deconv_kernel_size, nb_in_channels, nb_out_channels, padding, initializer="he_normal", use_batchnorm=True, is_last=False):
-        super().__init__(nb_classes, conv_kernel_size, deconv_kernel_size, nb_in_channels, nb_out_channels, padding, initializer, use_batchnorm, is_last)
+    def __init__(self, *args, **kwargs):
+        super().__init__(self, *args, **kwargs)
         self.initialize_skip_connection()
 
     def __call__(self, previous_decoder_output, opposite_encoder_output, is_training):
