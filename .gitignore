@@ -6,3 +6,4 @@ src/logs/*
 checkpoints/*
 saved_model/*
 outputs/*
+config/__pycache__/*
