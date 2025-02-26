@@ -17,8 +17,8 @@ class DataProcessor:
         return image, mask
 
     def preprocess(self, image, mask):
-        image = tf.image.resize(image, self.img_size, method='bilinear') / 255.0  # Normalize between 0 and 1
-        mask = tf.image.resize(mask, self.img_size, method='nearest')
+        image = tf.image.resize(image, [self.img_size, self.img_size], method='bilinear') / 255.0  # Normalize between 0 and 1
+        mask = tf.image.resize(mask, [self.img_size, self.img_size], method='nearest')
         mask = tf.one_hot(mask, depth=self.num_classes)        # One-hot encode (the depth dim. is one hot encoded)
         mask = tf.squeeze(mask, axis=-2)
         return image, mask
