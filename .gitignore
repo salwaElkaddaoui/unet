@@ -5,3 +5,4 @@ src/logs/*
 *.ipynb
 checkpoints/*
 saved_model/*
+outputs/*
