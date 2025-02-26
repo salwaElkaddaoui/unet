@@ -1,0 +1,4 @@
+tensorflow[and-cuda]
+opencv-python
+matplotlib
+hydra-core
