@@ -3,6 +3,7 @@ from typing import Literal
 
 @dataclass
 class ModelConfig:
+    image_size: int
     in_image_depth: int
     nb_classes: int
     nb_blocks: int
@@ -14,6 +15,8 @@ class ModelConfig:
     use_dropout: bool
 
     def __post_init__(self):
+        if self.image_size <= 0:
+            raise ValueError(f"image_size must be greater than 0, got {self.image_size}")
         if self.in_image_depth not in {1, 3}:
             raise ValueError(f"in_image_depth must be either 1 or 3, got {self.in_image_depth}")
         if self.nb_classes <= 2:
@@ -35,6 +38,8 @@ class TrainingConfig:
     batch_size: int
     learning_rate: float
     num_epochs: int
+    checkpoint_dir: str
+    log_dir: str
 
     def __post_init__(self):
         if self.batch_size < 1:
