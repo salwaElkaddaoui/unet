@@ -73,7 +73,7 @@ class Unet(tf.Module):
         # bottleneck
         output = self.bottleneck(pool, is_training)
         # decoder
-        for i, decoder_block in self.decoder_blocks:
+        for i, decoder_block in enumerate(self.decoder_blocks):
             output = decoder_block( previous_decoder_output=output, 
                                     opposite_encoder_output=encoder_outputs[-(i+1)],
                                     is_training=is_training)        
