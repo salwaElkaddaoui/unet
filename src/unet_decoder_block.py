@@ -4,16 +4,16 @@ from unet_block import UnetBlock
 from residualmixin import ResidualMixin
 
 class UnetDecoderBlock(UnetBlock):
-    def __init__(self, nb_classes, conv_kernel_size, deconv_kernel_size, nb_in_channels, nb_out_channels, padding, initializer="he_normal", use_batchnorm=True, is_last=False):
+    def __init__(self, num_classes, conv_kernel_size, deconv_kernel_size, nb_in_channels, nb_out_channels, padding, initializer="he_normal", use_batchnorm=True, is_last=False):
         super().__init__(conv_kernel_size, nb_in_channels, nb_out_channels, padding, initializer, use_batchnorm)
-        self.nb_classes = nb_classes
+        self.num_classes = num_classes
         self.deconv_kernel_size = deconv_kernel_size
         self.is_last = is_last
         self.deconv_kernel = tf.Variable(self.initializer(shape=[self.deconv_kernel_size, self.deconv_kernel_size, self.nb_out_channels, self.nb_in_channels])) # conv2d_transpose (upsampling) [height, width, nb_out_channels, nb_in_channels]
         self.deconv_bias = tf.Variable(tf.zeros(shape=[self.nb_out_channels]))
         if self.is_last:
-            self.last_kernel = tf.Variable(self.initializer([1, 1, self.nb_out_channels, self.nb_classes]))
-            self.last_bias = tf.Variable(tf.zeros(shape=[self.nb_classes]))
+            self.last_kernel = tf.Variable(self.initializer([1, 1, self.nb_out_channels, self.num_classes]))
+            self.last_bias = tf.Variable(tf.zeros(shape=[self.num_classes]))
 
     def deconv_and_concat(self, previous_decoder_output, opposite_encoder_output):
         deconv = tf.nn.conv2d_transpose(

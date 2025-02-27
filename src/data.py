@@ -1,7 +1,4 @@
 import tensorflow as tf
-import os
-from matplotlib import pyplot as plt
-
 
 class DataProcessor:
     def __init__(self, img_size: int, batch_size: int, num_classes: int):

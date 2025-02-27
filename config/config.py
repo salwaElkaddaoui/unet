@@ -5,7 +5,6 @@ from typing import Literal
 class ModelConfig:
     image_size: int
     in_image_depth: int
-    nb_classes: int
     nb_blocks: int
     block_type: Literal['basic', 'resnet']
     padding: str
@@ -19,8 +18,6 @@ class ModelConfig:
             raise ValueError(f"image_size must be greater than 0, got {self.image_size}")
         if self.in_image_depth not in {1, 3}:
             raise ValueError(f"in_image_depth must be either 1 or 3, got {self.in_image_depth}")
-        if self.nb_classes <= 2:
-            raise ValueError(f"nb_classes must be greater than 2, got {self.nb_classes}")
         if self.nb_blocks <= 2:
             raise ValueError(f"nb_blocks must be greater than 2, got {self.nb_blocks}")
         if not self.block_type.lower() in {'basic', 'resnet'}:
@@ -51,6 +48,7 @@ class TrainingConfig:
         
 @dataclass
 class DatasetConfig:
+    labelmap_path: str
     train_image_path: str
     train_mask_path: str
 

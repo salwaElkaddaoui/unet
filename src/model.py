@@ -11,7 +11,7 @@ BLOCK_FACTORY = {
 class Unet(tf.Module):
     def __init__(self, 
                  in_image_depth: int,
-                 nb_classes: int, 
+                 num_classes: int, 
                  nb_blocks: int=4, 
                  block_type='basic', 
                  padding: str='SAME', 
@@ -52,7 +52,7 @@ class Unet(tf.Module):
                                                 initializer=initializer, 
                                                 use_batchnorm=use_batchnorm)
 
-        self.decoder_blocks=[   self.decoder_class( nb_classes = nb_classes,
+        self.decoder_blocks=[   self.decoder_class( num_classes = num_classes,
                                                     conv_kernel_size=3, 
                                                     deconv_kernel_size=2, 
                                                     nb_in_channels=filter_sizes[i+1], #nb_initial_filters*2**(i+1),

@@ -58,11 +58,15 @@ class Trainer:
 
 @hydra.main(version_base=None, config_path="../config", config_name="config")
 def main(cfg: Config):
+    import json
+    with open(cfg.dataset.labelmap_path, 'r') as f:
+        labelmap = json.load(f)
+    num_classes = len(labelmap)
 
     data_processor = DataProcessor(
         img_size=cfg.model.image_size, 
         batch_size=cfg.training.batch_size, 
-        num_classes=cfg.model.nb_classes
+        num_classes=num_classes
     )
     train_dataset = data_processor.create_dataset(
         image_paths=cfg.dataset.train_image_path, 
@@ -72,7 +76,7 @@ def main(cfg: Config):
     
     model = Unet(
         in_image_depth=cfg.model.in_image_depth,
-        nb_classes=cfg.model.nb_classes,
+        num_classes=num_classes,
         nb_blocks=cfg.model.nb_blocks,
         block_type=cfg.model.block_type,
         padding=cfg.model.padding,

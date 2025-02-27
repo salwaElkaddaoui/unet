@@ -1,7 +1,6 @@
 model:
   image_size: 256
   in_image_depth: 3
-  nb_classes: 6
   nb_blocks: 4
   block_type: "basic"
   padding: "SAME"
@@ -18,5 +17,6 @@ training:
   log_dir: "../logs"
 
 dataset:
+  labelmap_path: "./data/labelmap.json"
   train_image_path: "./data/image_paths.txt"
   train_mask_path: "./data/mask_paths.txt"
