@@ -1,10 +1,15 @@
+import os, sys
+root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.append(root_dir)
+
 import tensorflow as tf
 # tf.debugging.set_log_device_placement(True)
-
-# import os
-# os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-
+import hydra
+from config.config import Config
+from model import Unet
+from data import DataProcessor
 from metrics import compute_iou, compute_pixel_accuracy
+from loss import loss
 
 class Trainer:
     def __init__(self, loss_fn, optimizer):
@@ -49,3 +54,44 @@ class Trainer:
                         tf.summary.scalar(name="IoU Class i"+str(idx)+": ", data=element, step=num_iterations)
             checkpoint_manager.save()
         # tf.saved_model.save(model, "./saved_model")
+
+
+@hydra.main(version_base=None, config_path="../config", config_name="config")
+def main(cfg: Config):
+
+    data_processor = DataProcessor(
+        img_size=cfg.model.image_size, 
+        batch_size=cfg.training.batch_size, 
+        num_classes=cfg.model.nb_classes
+    )
+    train_dataset = data_processor.create_dataset(
+        image_paths=cfg.dataset.train_image_path, 
+        mask_paths=cfg.dataset.train_mask_path, 
+        training=True
+    )
+    
+    model = Unet(
+        in_image_depth=cfg.model.in_image_depth,
+        nb_classes=cfg.model.nb_classes,
+        nb_blocks=cfg.model.nb_blocks,
+        block_type=cfg.model.block_type,
+        padding=cfg.model.padding,
+        nb_initial_filters=cfg.model.nb_initial_filters,
+        initializer=cfg.model.initializer,
+        use_batchnorm=cfg.model.use_batchnorm,
+        use_dropout=cfg.model.use_dropout,
+    )
+
+    optimizer = tf.optimizers.Adam(learning_rate=cfg.training.learning_rate)
+
+    trainer = Trainer(loss_fn=loss, optimizer=optimizer)
+    trainer(
+        model=model,
+        dataset=train_dataset,
+        epochs=cfg.training.num_epochs,
+        checkpoint_dir=cfg.training.checkpoint_dir,
+        log_dir=cfg.training.log_dir
+    )
+
+if __name__ == "__main__":
+    main()

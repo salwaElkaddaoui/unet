@@ -7,3 +7,4 @@ checkpoints/*
 saved_model/*
 outputs/*
 config/__pycache__/*
+data/*

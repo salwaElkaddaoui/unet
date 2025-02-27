@@ -18,5 +18,5 @@ training:
   log_dir: "../logs"
 
 dataset:
-  train_path: "data/train"
-  test_path: "data/test"
+  train_image_path: "./data/image_paths.txt"
+  train_mask_path: "./data/mask_paths.txt"

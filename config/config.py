@@ -51,8 +51,8 @@ class TrainingConfig:
         
 @dataclass
 class DatasetConfig:
-    train_path: str
-    test_path: str
+    train_image_path: str
+    train_mask_path: str
 
 
 @dataclass
