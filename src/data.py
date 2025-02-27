@@ -4,26 +4,26 @@ from matplotlib import pyplot as plt
 
 
 class DataProcessor:
-    def __init__(self, img_size, batch_size, num_classes):
+    def __init__(self, img_size: int, batch_size: int, num_classes: int):
         self.img_size = img_size
         self.batch_size = batch_size
         self.num_classes = num_classes
 
-    def load_data(self, img_path, mask_path):
+    def load_data(self, img_path: str, mask_path: str)->tuple[tf.Tensor, tf.Tensor]:
         image = tf.io.read_file(img_path)
         image = tf.image.decode_jpeg(image, channels=3) #dataset images are RGB jpg images 
         mask = tf.io.read_file(mask_path)
         mask = tf.image.decode_png(mask, channels=1) #masks are encoded as grayscale png images
         return image, mask
 
-    def preprocess(self, image, mask):
+    def preprocess(self, image: tf.Tensor, mask: tf.Tensor)-> tuple[tf.Tensor, tf.Tensor]:
         image = tf.image.resize(image, [self.img_size, self.img_size], method='bilinear') / 255.0  # Normalize between 0 and 1
         mask = tf.image.resize(mask, [self.img_size, self.img_size], method='nearest')
         mask = tf.one_hot(mask, depth=self.num_classes)        # One-hot encode (the depth dim. is one hot encoded)
         mask = tf.squeeze(mask, axis=-2)
         return image, mask
 
-    def augment(self, image, mask):
+    def augment(self, image: tf.Tensor, mask: tf.Tensor)-> tuple[tf.Tensor, tf.Tensor]:
         choice = tf.random.uniform((), minval=0, maxval=2, dtype=tf.int32)
         
         def rotate():
@@ -54,12 +54,21 @@ class DataProcessor:
         return image, mask
 
 
-    def create_dataset(self, image_paths, mask_paths, training=True):
-        dataset = tf.data.Dataset.from_tensor_slices((image_paths, mask_paths))
-        dataset = dataset.map(self.load_data, num_parallel_calls=tf.data.AUTOTUNE)
+    def create_dataset(self, image_paths:str, mask_paths:str, training:bool=True) -> tf.data.Dataset:
+        """ 
+        Creates a TensorFlow Dataset from image and mask file paths for training and evaluation.
+        Args:
+            image_paths: path of a .txt file containing the absolute path of images, one per line.
+            mask_paths: path of .txt file containing the absolute path of masks, one per line.
+            training: Flag to apply image augmentation. Set to True for training, False for evaluation.
+        Returns:
+            tf.data.Dataset: a batched and preprocessed dataset, ready for training and evaluation.
+        """    
+        image_paths = tf.data.TextLineDataset(image_paths)
+        mask_paths = tf.data.TextLineDataset(mask_paths)
+        paths_dataset = tf.data.Dataset.zip((image_paths, mask_paths))
+        dataset = paths_dataset.map(self.load_data, num_parallel_calls=tf.data.AUTOTUNE)
         if training:
             dataset = dataset.map(self.augment, num_parallel_calls=tf.data.AUTOTUNE)
         dataset = dataset.map(self.preprocess, num_parallel_calls=tf.data.AUTOTUNE)
         return dataset.shuffle(100).batch(self.batch_size).prefetch(tf.data.AUTOTUNE)
-
-
