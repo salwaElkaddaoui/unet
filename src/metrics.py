@@ -1,8 +1,6 @@
 import tensorflow as tf
-import os
-from data import DataProcessor
 
-def compute_iou(y_true, y_pred):
+def compute_iou(y_pred: tf.Tensor, y_true: tf.Tensor)->tf.Tensor:
 
     num_classes = tf.shape(y_pred)[-1]
     y_pred = tf.one_hot(tf.argmax(y_pred, axis=-1), depth=num_classes)
@@ -26,12 +24,12 @@ def compute_iou(y_true, y_pred):
     return iou, miou
 
 
-def compute_pixel_accuracy(y_pred, y_true):
+def compute_pixel_accuracy(y_pred:tf.Tensor, y_true:tf.Tensor)->tf.Tensor:
     y_pred = tf.argmax(y_pred, axis=-1)  # get the estimated class index
     correct = tf.equal(y_pred, tf.argmax(y_true, axis=-1))  
     accuracy = tf.reduce_mean(tf.cast(correct, tf.float32))
     return accuracy
 
 
-def compute_pixel_error(y_pred, y_true):
+def compute_pixel_error(y_pred:tf.Tensor, y_true:tf.Tensor)->tf.Tensor:
     return 1-compute_pixel_accuracy(y_pred, y_true)

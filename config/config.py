@@ -35,6 +35,7 @@ class TrainingConfig:
     batch_size: int
     learning_rate: float
     num_epochs: int
+    checkpoint_name: str
     checkpoint_dir: str
     log_dir: str
 
@@ -51,6 +52,9 @@ class DatasetConfig:
     labelmap_path: str
     train_image_path: str
     train_mask_path: str
+    test_image_path: str
+    test_mask_path: str
+    test_image: str
 
 
 @dataclass
