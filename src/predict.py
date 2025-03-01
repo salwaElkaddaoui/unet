@@ -96,14 +96,18 @@ def main(cfg: Config):
 
     # Predict
     predictor = Predictor(model=model, num_classes=num_classes, image_size=cfg.model.image_size)
-    predictions = predictor.predict_batch(test_dataset)
-    colored_masks = predictor.visualize_predictions(predictions)
+    for batch in test_dataset:
+        test_images, test_masks = batch
+        predictions = predictor.predict_batch(test_images)
 
-    # print(colored_mask.numpy().shape)
-    # cv2.imshow("image", image[0, ...].numpy()[:, :, ::-1])
-    # cv2.imshow("mask", colored_mask[0, ...].numpy()[:, :, ::-1])
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
+        # Visualize predictions for the first image only
+        colored_mask = predictor.visualize_predictions(predictions)
+
+        print(colored_mask.numpy().shape)
+        cv2.imshow("image", test_images[0, ...].numpy()[:, :, ::-1])
+        cv2.imshow("mask", colored_mask[0, ...].numpy()[:, :, ::-1])
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
 
 
 
