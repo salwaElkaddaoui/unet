@@ -18,7 +18,10 @@ This project provides a configurable U-Net for image segmentation, implemented u
     - The list of training images must be stored in a text file, with each line containing the absolute path to an image.
     - A separate text file should contain the absolute paths to the corresponding masks, one per line.
     - The paths to the training and test sets must be specified in the **config/config.yaml** file.
-
+- Label Map:
+    - A JSON file must be provided to define the class mappings.
+    - The class with index 0 is the background.
+    - The path to this label map should be set in **config/config.yaml**.
 ### Installation
 
 A GPU is required. Install dependencies with:
