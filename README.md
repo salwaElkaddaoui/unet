@@ -24,7 +24,7 @@ All parameters are set in **config/config.yaml**, making it easy to experiment w
     - A JSON file must be provided to define the class mappings.
     - The class with index 0 is the background.
     - The path to this label map should be set in **config/config.yaml**.
-### Installation
+### Requirements installation
 
 A GPU is required. Install dependencies with:
 ```
@@ -40,7 +40,7 @@ python src/train.py
 ```
 python src/predict.py
 ``` 
-- The checkpoint's name and path should be set in **config/config.yaml**.
+The checkpoint's name and path should be set in **config/config.yaml**.
 
 ### Monitoring Training with TensorBoard
 
