@@ -33,13 +33,20 @@ pip install -r requirements.txt
 ### Usage
 
 - **Training:** Run 
-```python
+```
 python src/train.py
 ```
 - **Prediction:** To generate segmentations **from a checkpoint on a set of images**, run 
-```python
+```
 python src/predict.py
 ``` 
 - The checkpoint's name and path should be set in **config/config.yaml**.
 
+### Monitoring Training with TensorBoard
 
+- Evaluation metrics and errors can be visualized during training using TensorBoard.
+- The logs directory path should be defined in **config/config.yaml**.
+- To launch TensorBoard, run:
+```
+tensorboard --logdir=<yourlogdir>
+```
