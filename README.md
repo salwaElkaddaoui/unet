@@ -10,6 +10,8 @@ This project provides a configurable U-Net for image segmentation, implemented u
 - **Network depth**: Configurable by setting the number of blocks.
 - **Initial filters**: Start from 64 (default) or any other value.
 
+All parameters are set in **config/config.yaml**, making it easy to experiment with different architectures.
+
 ### Data Format
 
 - Training and test images: RGB JPEG images.
@@ -30,7 +32,14 @@ pip install -r requirements.txt
 ```
 ### Usage
 
-- **Training:** Run ```python train.py```.
-- **Prediction:** Run ```python predict.py``` to generate segmentations from a checkpoint on a set of images.
+- **Training:** Run 
+```python
+python src/train.py
+```
+- **Prediction:** To generate segmentations **from a checkpoint on a set of images**, run 
+```python
+python src/predict.py
+``` 
+- The checkpoint's name and path should be set in **config/config.yaml**.
 
-All parameters are set in **config/config.yaml**, making it easy to experiment with different architectures.
+
