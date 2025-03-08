@@ -9,6 +9,7 @@ This project provides a configurable U-Net for image segmentation, implemented u
 - **Connection type**: Choose between basic or residual connections.
 - **Network depth**: Configurable by setting the number of blocks.
 - **Initial filters**: Start from 64 (default) or any other value.
+- **Batch Normalization** and **Dropout** are optional.
 
 All parameters are set in **config/config.yaml**, making it easy to experiment with different architectures.
 
