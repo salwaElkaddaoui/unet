@@ -63,7 +63,7 @@ class BasicDecoderBlock(UnetDecoderBlock):
 
 class ResidualDecoderBlock(UnetDecoderBlock, ResidualMixin):
     def __init__(self, *args, **kwargs):
-        super().__init__(self, *args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.initialize_skip_connection()
 
     def __call__(self, previous_decoder_output, opposite_encoder_output, is_training):

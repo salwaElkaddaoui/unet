@@ -31,7 +31,7 @@ class BasicEncoderBlock(UnetEncoderBlock):
         
 class ResidualEncoderBlock(UnetEncoderBlock, ResidualMixin):
     def __init__(self, *args, **kwargs):
-        super().__init__(self, *args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.initialize_skip_connection()
 
     def __call__(self, input, is_training):
