@@ -21,8 +21,10 @@ class UnetDecoderBlock(UnetBlock):
             filters=self.deconv_kernel,
             output_shape=[
                 tf.shape(previous_decoder_output)[0], 
-                tf.shape(previous_decoder_output)[1] * 2, 
-                tf.shape(previous_decoder_output)[2] * 2, 
+                tf.shape(opposite_encoder_output)[1],
+                tf.shape(opposite_encoder_output)[2],
+                # tf.shape(previous_decoder_output)[1] * 2, 
+                # tf.shape(previous_decoder_output)[2] * 2, 
                 tf.shape(previous_decoder_output)[-1] // 2
             ],
             strides=[1, 2, 2, 1],
