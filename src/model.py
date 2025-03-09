@@ -78,3 +78,11 @@ class Unet(tf.Module):
                                     opposite_encoder_output=encoder_outputs[-(i+1)],
                                     is_training=is_training)        
         return output
+    
+    def count_parameters(self):
+        
+        count = {   "Non trainable variables":len(self.non_trainable_variables),
+                    "Trainable variables": len(self.trainable_variables),
+                    "Trainable parameters": sum([tf.size(var).numpy() for var in self.trainable_variables])
+        }
+        return count
