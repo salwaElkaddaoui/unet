@@ -9,11 +9,11 @@ class UnetDecoderBlock(UnetBlock):
         self.num_classes = num_classes
         self.deconv_kernel_size = deconv_kernel_size
         self.is_last = is_last
-        self.deconv_kernel = tf.Variable(self.initializer(shape=[self.deconv_kernel_size, self.deconv_kernel_size, self.nb_out_channels, self.nb_in_channels])) # conv2d_transpose (upsampling) [height, width, nb_out_channels, nb_in_channels]
-        self.deconv_bias = tf.Variable(tf.zeros(shape=[self.nb_out_channels]))
+        self.deconv_kernel = tf.Variable(self.initializer(shape=[self.deconv_kernel_size, self.deconv_kernel_size, self.nb_out_channels, self.nb_in_channels]), name="deconv_kernel") # conv2d_transpose (upsampling) [height, width, nb_out_channels, nb_in_channels]
+        self.deconv_bias = tf.Variable(tf.zeros(shape=[self.nb_out_channels]), name="deconv_bias")
         if self.is_last:
-            self.last_kernel = tf.Variable(self.initializer([1, 1, self.nb_out_channels, self.num_classes]))
-            self.last_bias = tf.Variable(tf.zeros(shape=[self.num_classes]))
+            self.last_kernel = tf.Variable(self.initializer([1, 1, self.nb_out_channels, self.num_classes]), name="last_conv_kernel")
+            self.last_bias = tf.Variable(tf.zeros(shape=[self.num_classes]), name="last_conv_bias")
 
     def deconv_and_concat(self, previous_decoder_output, opposite_encoder_output):
         deconv = tf.nn.conv2d_transpose(
@@ -42,7 +42,8 @@ class UnetDecoderBlock(UnetBlock):
         return tf.concat([opposite_encoder_output, deconv], axis=-1)
     
     def apply_head(self, conv):
-        logits = tf.nn.conv2d(conv, self.last_kernel, strides=[1, 1, 1, 1], padding=self.padding)
+        conv = tf.nn.conv2d(conv, self.last_kernel, strides=[1, 1, 1, 1], padding=self.padding)
+        logits = tf.nn.bias_add(conv, self.last_bias)
         probabilities = tf.nn.softmax(logits, axis=-1)
         probabilities = tf.clip_by_value(probabilities, 1e-7, 1.0 - 1e-7) #to avoid log(0)
 
