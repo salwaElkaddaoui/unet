@@ -14,12 +14,12 @@ class BatchNormalization(tf.Module):
         self.momentum = momentum
 
         # Learnable parameters
-        self.gamma = tf.Variable(tf.ones([nb_channels]), trainable=True)
-        self.beta = tf.Variable(tf.zeros([nb_channels]), trainable=True)
+        self.gamma = tf.Variable(tf.ones([nb_channels]), trainable=True, name="gamma")
+        self.beta = tf.Variable(tf.zeros([nb_channels]), trainable=True, name="beta")
 
         # Moving averages (for inference)
-        self.moving_mean = tf.Variable(tf.zeros([nb_channels]), trainable=False)
-        self.moving_variance = tf.Variable(tf.ones([nb_channels]), trainable=False)
+        self.moving_mean = tf.Variable(tf.zeros([nb_channels]), trainable=False, name="moving_mean")
+        self.moving_variance = tf.Variable(tf.ones([nb_channels]), trainable=False, name="moving_variance")
 
     def __call__(self, x, training=True):
         """

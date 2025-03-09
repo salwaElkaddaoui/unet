@@ -2,8 +2,8 @@ import tensorflow as tf
 class ResidualMixin:
    
     def initialize_skip_connection(self):
-        self.skip_connection_kernel = tf.Variable(self.initializer([1, 1, self.nb_in_channels, self.nb_out_channels]))
-        self.skip_connection_bias = tf.Variable(tf.zeros(shape=[self.nb_out_channels]))
+        self.skip_connection_kernel = tf.Variable(self.initializer([1, 1, self.nb_in_channels, self.nb_out_channels]), name="skip_conv_kernel")
+        self.skip_connection_bias = tf.Variable(tf.zeros(shape=[self.nb_out_channels]), name="skip_conv_bias")
 
     def apply_skip_connection(self, input, conv):
         input_depth_changed = tf.nn.conv2d(input=input, filters=self.skip_connection_kernel, strides=[1, 1, 1, 1], padding=self.padding)

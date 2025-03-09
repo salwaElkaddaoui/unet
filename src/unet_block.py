@@ -16,11 +16,11 @@ class UnetBlock(ABC, tf.Module):
         else:
             self.initializer = tf.compat.v1.initializers.he_uniform()
 
-        self.kernel0 = tf.Variable(self.initializer([self.conv_kernel_size, self.conv_kernel_size, self.nb_in_channels, self.nb_out_channels]))
-        self.kernel1 = tf.Variable(self.initializer([self.conv_kernel_size, self.conv_kernel_size, self.nb_out_channels, self.nb_out_channels]))
+        self.kernel0 = tf.Variable(self.initializer([self.conv_kernel_size, self.conv_kernel_size, self.nb_in_channels, self.nb_out_channels]), name="conv_kernel0")
+        self.kernel1 = tf.Variable(self.initializer([self.conv_kernel_size, self.conv_kernel_size, self.nb_out_channels, self.nb_out_channels]), name="conv_kernel1")
         
-        self.bias0 = tf.Variable(tf.zeros(shape=[self.nb_out_channels]))
-        self.bias1 = tf.Variable(tf.zeros(shape=[self.nb_out_channels]))
+        self.bias0 = tf.Variable(tf.zeros(shape=[self.nb_out_channels]), name="conv_bias0")
+        self.bias1 = tf.Variable(tf.zeros(shape=[self.nb_out_channels]), name="conv_bias1")
 
         if use_batchnorm:
             self.batch_norm0 = BatchNormalization(nb_channels=self.nb_out_channels)
