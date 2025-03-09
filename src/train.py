@@ -1,9 +1,10 @@
+import gc
+gc.collect()
 import os, sys
+# os.environ['TF_CPP_MIN_LOG_LEVEL'] = '0'
 root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.append(root_dir)
-
 import tensorflow as tf
-# tf.debugging.set_log_device_placement(True)
 import hydra
 from config.config import Config
 from model import Unet
@@ -16,14 +17,14 @@ class Trainer:
         self.loss_fn = loss_fn
         self.optimizer = optimizer
 
-    @tf.function
+    # @tf.function
     def train_iteration(self, model, image_batch, mask_batch):
         with tf.device('/GPU:0'):
             with tf.GradientTape() as tape:
                 mask_pred = model(image_batch)
-                loss = self.loss_fn(mask_pred, mask_batch)
-                iou, miou = compute_iou(mask_batch, mask_pred)
-                pixel_accuracy = compute_pixel_accuracy(mask_batch, mask_pred)
+                loss = self.loss_fn(y_pred=mask_pred, y_true=mask_batch)
+                iou, miou = compute_iou(y_pred=mask_pred, y_true=mask_batch)
+                pixel_accuracy = compute_pixel_accuracy(y_pred=mask_pred, y_true=mask_batch)
             gradients = tape.gradient(loss, model.trainable_variables)
             self.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
         return loss, miou, iou, pixel_accuracy
@@ -85,6 +86,8 @@ def main(cfg: Config):
         use_batchnorm=cfg.model.use_batchnorm,
         use_dropout=cfg.model.use_dropout,
     )
+
+    print(model.count_parameters())
 
     optimizer = tf.optimizers.Adam(learning_rate=cfg.training.learning_rate)
 
