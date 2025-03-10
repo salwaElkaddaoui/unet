@@ -16,15 +16,19 @@ All parameters are set in **config/config.yaml**, making it easy to experiment w
 ### Data Format
 
 - Training and test images: RGB JPEG images.
-- Masks: Grayscale PNG images, where each class is assigned a specific gray level.
+- Masks: RGB PNG images, where each class is assigned a specific color.
 - Dataset listing:
     - The list of training images must be stored in a text file, with each line containing the absolute path to an image.
     - A separate text file should contain the absolute paths to the corresponding masks, one per line.
     - The paths to the training and test sets must be specified in the **config/config.yaml** file.
 - Label Map:
-    - A JSON file must be provided to define the class mappings.
+    - A JSON file defining the class mappings.
     - The class with index 0 is the background.
     - The path to this label map should be set in **config/config.yaml**.
+- Color Map:
+    - A JSON file defining the color of each class (for visualization purposes).
+    - The path to this label map should be set in **config/config.yaml**.
+
 ### Requirements installation
 
 A GPU is required. Install dependencies with:
