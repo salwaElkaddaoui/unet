@@ -64,10 +64,14 @@ def main(cfg: Config):
         labelmap = json.load(f)
     num_classes = len(labelmap)
 
+    with open(cfg.dataset.colormap_path, 'r') as f:
+        colormap = json.load(f)
+
     data_processor = DataProcessor(
         img_size=cfg.model.image_size, 
         batch_size=cfg.training.batch_size, 
-        num_classes=num_classes
+        num_classes=num_classes,
+        colormap=colormap
     )
     train_dataset = data_processor.create_dataset(
         image_paths=cfg.dataset.train_image_path, 

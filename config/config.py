@@ -50,6 +50,7 @@ class TrainingConfig:
 @dataclass
 class DatasetConfig:
     labelmap_path: str
+    colormap_path: str
     train_image_path: str
     train_mask_path: str
     test_image_path: str

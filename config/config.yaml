@@ -1,8 +1,8 @@
 model:
-  image_size: 256
+  image_size: 128
   in_image_depth: 3
   nb_blocks: 4
-  block_type: "basic"
+  block_type: "resnet"
   padding: "SAME"
   nb_initial_filters: 64
   initializer: "he_normal"
@@ -12,15 +12,16 @@ model:
 training:
   batch_size: 8
   learning_rate: 1e-4
-  num_epochs: 10
+  num_epochs: 1
   checkpoint_dir: "./checkpoints"
-  checkpoint_name: "ckpt-10"
+  checkpoint_name: "ckpt-1"
   log_dir: "../logs"
 
 dataset:
-  labelmap_path: "./data/labelmap.json"
-  train_image_path: "./data/image_paths.txt"
-  train_mask_path: "./data/mask_paths.txt"
-  test_image_path: "./data/image_paths.txt"
-  test_mask_path: "./data/mask_paths.txt"
+  labelmap_path: "./data/pascalvoc/labelmap.json"
+  colormap_path: "./data/pascalvoc/colormap.json"
+  train_image_path: "./data/pascalvoc/train_image_paths.txt"
+  train_mask_path: "./data/pascalvoc/train_mask_paths.txt"
+  test_image_path: "./data/pascalvoc/val_image_paths.txt"
+  test_mask_path: "./data/pascalvoc/val_mask_paths.txt"
   test_image: ""
