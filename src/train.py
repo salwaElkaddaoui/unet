@@ -10,12 +10,18 @@ from config.config import Config
 from model import Unet
 from data import DataProcessor
 from metrics import compute_iou, compute_pixel_accuracy
-from loss import loss
+from loss import weighted_cross_entropy
+
 
 class Trainer:
-    def __init__(self, loss_fn, optimizer):
+    def __init__(self, loss_fn, initial_lr):
         self.loss_fn = loss_fn
-        self.optimizer = optimizer
+        self.learning_rate = initial_lr
+        self.optimizer = tf.optimizers.Adam(learning_rate=self.learning_rate)
+
+    def lr_schedule(self, epoch):
+        factor = tf.math.pow(10, tf.cast((epoch+1) % 2, tf.float32)) #divide lr by 10 every 2 epochs
+        return tf.math.divide_no_nan(self.learning_rate, factor) if epoch > 1 else self.learning_rate
 
     # @tf.function
     def train_iteration(self, model, image_batch, mask_batch):
@@ -23,11 +29,8 @@ class Trainer:
             with tf.GradientTape() as tape:
                 mask_pred = model(image_batch, is_training=True)
                 loss = self.loss_fn(y_pred=mask_pred, y_true=mask_batch)
-                # iou, miou = compute_iou(y_pred=mask_pred, y_true=mask_batch)
-                # pixel_accuracy = compute_pixel_accuracy(y_pred=mask_pred, y_true=mask_batch)
             gradients = tape.gradient(loss, model.trainable_variables)
             self.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
-        # return loss, miou, iou, pixel_accuracy
 
     def evaluate(self, model, dataset):
         total_loss = 0
@@ -63,32 +66,19 @@ class Trainer:
         checkpoint = tf.train.Checkpoint(model=model, optimizer=self.optimizer)
         checkpoint_manager = tf.train.CheckpointManager(checkpoint, checkpoint_dir, max_to_keep=1)
 
-        num_iterations = 0
         for epoch in range(epochs):
-            #train on training set
+            self.learning_rate = self.lr_schedule(epoch=epoch)
+            self.optimizer.learning_rate.assign(self.learning_rate)
             for iteration, (image_batch, mask_batch) in enumerate(train_dataset):
                 with tf.device('/GPU:0'):
-                    # loss, miou, iou, pixel_accuracy = self.train_iteration(model, image_batch, mask_batch)
                     self.train_iteration(model, image_batch, mask_batch)
-
-                print(f"\rTraining: Epoch {epoch}/{epochs}, Iteration {iteration}", end="", flush=True)
+                print(f"\rTraining: Epoch {epoch}/{epochs}, Iteration {iteration}, LR {self.optimizer.learning_rate.numpy():.1e} ", end="", flush=True)
             
-                num_iterations += 1
-            
-                # write to tensorboard
-                # with writer.as_default():
-                #     tf.summary.scalar(name="Training/Loss", data=loss, step=num_iterations)
-                #     tf.summary.scalar(name="Training/Pixel Accuracy", data=pixel_accuracy, step=num_iterations)
-                #     tf.summary.scalar(name="Training/Mean IoU", data=miou, step=num_iterations)
-                #     for idx, element in enumerate(iou):
-                #         tf.summary.scalar(name="Training/IoU Class i"+str(idx)+": ", data=element, step=num_iterations)
-            
-            #evaluate on training set and validation set
             train_loss, train_miou, train_iou, train_pixel_accuracy = self.evaluate(model, train_dataset)
-            print(f"Training: Epoch {epoch}, Loss: {train_loss.numpy():.4f}, Pixel Accuracy: {train_pixel_accuracy.numpy():.4f}")
+            print(f"\nEvaluation Trainset: Epoch {epoch}, Loss: {train_loss.numpy():.4f}, Pixel Accuracy: {train_pixel_accuracy.numpy():.4f}")
 
             val_loss, val_miou, val_iou, val_pixel_accuracy = self.evaluate(model, val_dataset)
-            print(f"Validation: Epoch {epoch}, Loss: {val_loss.numpy():.4f}, Pixel Accuracy: {val_pixel_accuracy.numpy():.4f}")
+            print(f"Evaluation Valset: Epoch {epoch}, Loss: {val_loss.numpy():.4f}, Pixel Accuracy: {val_pixel_accuracy.numpy():.4f}\n")
             
             with writer.as_default():
                 tf.summary.scalar(name="Training/Loss", data=train_loss, step=epoch)
@@ -149,9 +139,8 @@ def main(cfg: Config):
 
     print(model.count_parameters())
 
-    optimizer = tf.optimizers.Adam(learning_rate=cfg.training.learning_rate)
-
-    trainer = Trainer(loss_fn=loss, optimizer=optimizer)
+    
+    trainer = Trainer(loss_fn=weighted_cross_entropy, initial_lr=cfg.training.learning_rate)
     trainer(
         model=model,
         train_dataset=train_dataset,
