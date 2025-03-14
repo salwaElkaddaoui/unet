@@ -11,14 +11,15 @@ from model import Unet
 from data import DataProcessor
 from metrics import compute_iou, compute_pixel_accuracy
 from loss import weighted_cross_entropy
-
+import datetime
 
 class Trainer:
-    def __init__(self, loss_fn, initial_lr):
+    def __init__(self, loss_fn, initial_lr, labelmap):
         self.loss_fn = loss_fn
         self.learning_rate = initial_lr
         self.optimizer = tf.optimizers.Adam(learning_rate=self.learning_rate)
-
+        self.labelmap = labelmap
+        
     def lr_schedule(self, epoch):
         factor = tf.math.pow(10, tf.cast((epoch+1) % 2, tf.float32)) #divide lr by 10 every 2 epochs
         return tf.math.divide_no_nan(self.learning_rate, factor) if epoch > 1 else self.learning_rate
@@ -60,41 +61,66 @@ class Trainer:
 
     def __call__(self, model, train_dataset, val_dataset, epochs, checkpoint_dir, log_dir):
         """
-        Train model and save checkpoints
+        Train model and save checkpoints, log hyperparameters, metrics and loss to tensorboard.
         """
-        writer = tf.summary.create_file_writer(log_dir)
+        log_dir = log_dir+datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
         checkpoint = tf.train.Checkpoint(model=model, optimizer=self.optimizer)
         checkpoint_manager = tf.train.CheckpointManager(checkpoint, checkpoint_dir, max_to_keep=1)
+
+        class_writers = []
+        for idx in range(len(self.labelmap)):
+            class_folder = os.path.join(log_dir, self.labelmap[str(idx)])
+            if not os.path.exists(class_folder):
+                os.makedirs(class_folder)
+            class_writers.append(tf.summary.create_file_writer(class_folder))
+        train_folder = os.path.join(log_dir, "train")
+        if not os.path.exists(train_folder):
+            os.makedirs(train_folder)
+        train_writer=tf.summary.create_file_writer(train_folder)
+        val_folder = os.path.join(log_dir, "val")
+        if not os.path.exists(val_folder):
+            os.makedirs(val_folder)
+        val_writer=tf.summary.create_file_writer(val_folder)
+        hyperparameters_folder = os.path.join(log_dir, "hyperparameters")
+        if not os.path.exists(hyperparameters_folder):
+            os.makedirs(hyperparameters_folder)
+        hyperparameters_writer=tf.summary.create_file_writer(hyperparameters_folder)
 
         for epoch in range(epochs):
             self.learning_rate = self.lr_schedule(epoch=epoch)
             self.optimizer.learning_rate.assign(self.learning_rate)
+            
             for iteration, (image_batch, mask_batch) in enumerate(train_dataset):
                 with tf.device('/GPU:0'):
+                    batch_size, image_size, image_size, channels = tf.shape(image_batch)
                     self.train_iteration(model, image_batch, mask_batch)
-                print(f"\rTraining: Epoch {epoch}/{epochs}, Iteration {iteration}, LR {self.optimizer.learning_rate.numpy():.1e} ", end="", flush=True)
+                print(f"\rTraining: Epoch {epoch+1}/{epochs}, Iteration {iteration}, LR {self.optimizer.learning_rate.numpy():.1e} ", end="", flush=True)
             
             train_loss, train_miou, train_iou, train_pixel_accuracy = self.evaluate(model, train_dataset)
-            print(f"\nEvaluation Trainset: Epoch {epoch}, Loss: {train_loss.numpy():.4f}, Pixel Accuracy: {train_pixel_accuracy.numpy():.4f}")
+            print(f"\nEvaluation Trainset: Epoch {epoch+1}, Loss: {train_loss.numpy():.4f}, Pixel Accuracy: {train_pixel_accuracy.numpy():.4f}")
 
             val_loss, val_miou, val_iou, val_pixel_accuracy = self.evaluate(model, val_dataset)
-            print(f"Evaluation Valset: Epoch {epoch}, Loss: {val_loss.numpy():.4f}, Pixel Accuracy: {val_pixel_accuracy.numpy():.4f}\n")
-            
-            with writer.as_default():
-                tf.summary.scalar(name="Training/Loss", data=train_loss, step=epoch)
-                tf.summary.scalar(name="Training/Pixel Accuracy", data=train_pixel_accuracy, step=epoch)
-                tf.summary.scalar(name="Training/mIoU", data=train_miou, step=epoch)
-                for idx, element in enumerate(train_iou):
-                    tf.summary.scalar(name="Training/IoU Class "+str(idx)+": ", data=element, step=epoch)
+            print(f"Evaluation Valset: Epoch {epoch+1}, Loss: {val_loss.numpy():.4f}, Pixel Accuracy: {val_pixel_accuracy.numpy():.4f}\n")
 
-                tf.summary.scalar(name="Validation/Loss", data=val_loss, step=epoch)
-                tf.summary.scalar(name="Validation/Pixel Accuracy", data=val_pixel_accuracy, step=epoch)
-                tf.summary.scalar("Validation/mIoU", val_miou, step=epoch)
-                for idx, element in enumerate(val_iou):
-                    tf.summary.scalar(name="Validation/IoU Class "+str(idx)+": ", data=element, step=epoch)
-
+            for idx in range(len(self.labelmap)):
+                with class_writers[idx].as_default():
+                    tf.summary.scalar(name="IoU/Training Set", data=train_iou[idx], step=epoch)
+                    tf.summary.scalar(name="IoU/Validation Set", data=val_iou[idx], step=epoch)
+            with train_writer.as_default():
+                tf.summary.scalar(name="Loss", data=train_loss , step=epoch)
+                tf.summary.scalar(name="Pixel Accuracy", data=train_pixel_accuracy , step=epoch)
+                tf.summary.scalar(name="Mean IoU", data=train_miou , step=epoch)
+            with val_writer.as_default():
+                tf.summary.scalar(name="Loss", data=val_loss , step=epoch)
+                tf.summary.scalar(name="Pixel Accuracy", data=val_pixel_accuracy , step=epoch)
+                tf.summary.scalar(name="Mean IoU", data=val_miou , step=epoch)
+            with hyperparameters_writer.as_default():
+                tf.summary.scalar(name="Learning Rate", data=self.optimizer.learning_rate , step=epoch)
+                tf.summary.text(name="Batch Size", data=tf.strings.as_string(batch_size), step=0)
+                tf.summary.text(name="Input Image Size", data=tf.strings.as_string(image_size), step=0)
+                tf.summary.text(name="Loss Function", data="weighted cross entropy", step=0)
+                
             checkpoint_manager.save()
-            
         
         # tf.saved_model.save(model, "./saved_model")
 
@@ -140,7 +166,7 @@ def main(cfg: Config):
     print(model.count_parameters())
 
     
-    trainer = Trainer(loss_fn=weighted_cross_entropy, initial_lr=cfg.training.learning_rate)
+    trainer = Trainer(loss_fn=weighted_cross_entropy, initial_lr=cfg.training.learning_rate, labelmap=labelmap)
     trainer(
         model=model,
         train_dataset=train_dataset,
