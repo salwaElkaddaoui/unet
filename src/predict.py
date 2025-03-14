@@ -10,21 +10,18 @@ from model import Unet
 from data import DataProcessor
 from metrics import compute_iou, compute_pixel_error
 import cv2
+from matplotlib import pyplot as plt
+import seaborn as sns
 
 class Predictor:
     """Class for making predictions on single images and image batches, with metric computation."""
-    def __init__(self, model: tf.Module, num_classes: int, image_size: int)->None:
+    def __init__(self, model: tf.Module, image_size: int, labelmap: dict, colormap: dict)->None:
         self.model = model
         self.image_size = image_size
-        self.color_map = self._generate_color_map(num_classes=num_classes)
-
-    def _generate_color_map(self, num_classes: int):
-        """Generate a distinct color map with as many colors as needed."""
-        colormap = cm.get_cmap("tab10", num_classes)  # Use a colormap with `num_classes` distinct colors
-        colors = (colormap(np.linspace(0, 1, num_classes))[:, :3] * 255).astype(np.uint8)
-        return tf.constant(colors, dtype=tf.uint8)
-
-    @tf.function
+        self.labelmap = labelmap
+        self.colormap = colormap
+    
+    # @tf.function
     def predict_batch(self, input_tensor: tf.Tensor)->tf.Tensor:
         """Perform inference on a batch input tensors."""
         probabilities = self.model(input_tensor, is_training=False)
@@ -40,7 +37,7 @@ class Predictor:
     
     def visualize_predictions(self, predictions: tf.Tensor)->tf.Tensor:
         """Visualize the predictions as a colored mask."""
-        colored_mask = tf.gather(self.color_map, predictions)
+        colored_mask = tf.gather(self.colormap, predictions)
         return colored_mask
     
     def _load_and_preprocess_image(self, image_path: str)->tf.Tensor:
@@ -65,6 +62,8 @@ def main(cfg: Config):
     with open(cfg.dataset.labelmap_path, 'r') as f:
         labelmap = json.load(f)
     num_classes = len(labelmap)
+    with open(cfg.dataset.colormap_path, 'r') as f:
+        colormap = json.load(f)
 
     # Define Model to Load Weights from Checkpoint
     model = Unet(
@@ -86,8 +85,9 @@ def main(cfg: Config):
     data_processor = DataProcessor(
         img_size=cfg.model.image_size, 
         batch_size=cfg.training.batch_size, 
-        num_classes=num_classes
-    )
+        num_classes=num_classes,
+        colormap=colormap
+    )    
     test_dataset = data_processor.create_dataset(
         image_paths=cfg.dataset.test_image_path, 
         mask_paths=cfg.dataset.test_mask_path, 
@@ -95,21 +95,21 @@ def main(cfg: Config):
     )
 
     # Predict
-    predictor = Predictor(model=model, num_classes=num_classes, image_size=cfg.model.image_size)
-    for batch in test_dataset:
-        test_images, test_masks = batch
-        predictions = predictor.predict_batch(test_images)
+    predictor = Predictor(model=model, image_size=cfg.model.image_size, labelmap=labelmap, colormap=colormap)
+    y_pred = []
+    y_true = []
+    for (image_batch, mask_batch) in test_dataset:
+        y_pred.append(tf.reshape(predictor.predict_batch(image_batch), [-1]))
+        y_true.append(tf.reshape(tf.argmax(mask_batch, axis=-1), [-1]))
 
-        # Visualize predictions for the first image only
-        colored_mask = predictor.visualize_predictions(predictions)
-
-        print(colored_mask.numpy().shape)
-        cv2.imshow("image", test_images[0, ...].numpy()[:, :, ::-1])
-        cv2.imshow("mask", colored_mask[0, ...].numpy()[:, :, ::-1])
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
-
-
+    y_pred = tf.concat(y_pred, axis=0)  # Shape: [total_pixels]
+    y_true = tf.concat(y_true, axis=0) 
+    cm = tf.math.confusion_matrix(y_true, y_pred, num_classes=num_classes)
+    sns.heatmap(cm, annot=False, fmt="d", cmap="Blues", xticklabels=list(labelmap.values()), yticklabels=list(labelmap.values()))
+    plt.xlabel("Predicted Label")
+    plt.ylabel("True Label")
+    plt.title("Confusion Matrix")
+    plt.show()
 
 if __name__ == "__main__":
     main()
