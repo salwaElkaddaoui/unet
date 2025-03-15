@@ -31,3 +31,13 @@ def weighted_cross_entropy(y_pred, y_true):
     cross_entropy_loss = -tf.reduce_sum(y_true * tf.math.log(y_pred), axis=-1)
     weighted_loss = cross_entropy_loss * class_weights 
     return tf.reduce_mean(weighted_loss)
+
+import tensorflow as tf
+
+def dice_loss(y_true, y_pred):
+    intersection = tf.reduce_sum(y_true * y_pred, axis=[1, 2])  # Sum over height and width => [Batch_Size, Num_Classes]
+    union = tf.reduce_sum(y_true, axis=[1, 2]) + tf.reduce_sum(y_pred, axis=[1, 2])
+    dice_coefficient = (2.0 * intersection + 1e-6) / (union + 1e-6)
+    dice_loss_per_class = 1.0 - dice_coefficient
+    mean_dice_loss = tf.reduce_mean(dice_loss_per_class)    
+    return mean_dice_loss
