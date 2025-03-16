@@ -37,8 +37,13 @@ class Predictor:
     
     def visualize_predictions(self, predictions: tf.Tensor)->tf.Tensor:
         """Visualize the predictions as a colored mask."""
-        colored_mask = tf.gather(self.colormap, predictions)
-        return colored_mask
+        colormap = {int(k): v[0] for k, v in self.colormap.items()}  
+        colormap_tensor = tf.constant([colormap[i] for i in sorted(colormap.keys())], dtype=tf.uint8)
+        colored_mask = tf.gather(colormap_tensor, predictions)    
+        
+        plt.imshow(colored_mask.numpy())
+        plt.show()
+        # return colored_mask
     
     def _load_and_preprocess_image(self, image_path: str)->tf.Tensor:
         """Load and preprocess a single image."""
@@ -52,9 +57,59 @@ class Predictor:
         model_output = self.model(image_batch, is_training=False)
         iou, miou = compute_iou(y_pred=model_output, y_true=mask_batch)
         pixel_error = compute_pixel_error(y_pred=model_output, y_true=mask_batch)
-        return iou, miou, pixel_error
+        return iou, miou, 
 
-    
+    def compute_confusion_matrix(y_true, y_pred, labelmap):
+        
+        y_pred = tf.concat(y_pred, axis=0)  # Shape: [total_pixels]
+        y_true = tf.concat(y_true, axis=0) 
+        num_classes = len(labelmap)
+        cm = tf.math.confusion_matrix(y_true, y_pred, num_classes=num_classes).numpy()
+        plt.figure(figsize=(10, 8))
+        sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", xticklabels=list(labelmap.values()), yticklabels=list(labelmap.values()))
+        plt.xlabel("Predicted Label")
+        plt.ylabel("True Label")
+        plt.title("Confusion Matrix")
+        plt.show()
+
+        return cm
+
+    def visualize_batch_predictions(self, model: tf.Module, images: tf.Tensor, masks: tf.Tensor) -> None:
+        predictions = model(images, is_training=False)
+        pred_labels = tf.argmax(predictions, axis=-1)  # Shape: (batch_size, height, width)
+        true_labels = tf.argmax(masks, axis=-1)  # Shape: (batch_size, height, width)
+
+        colormap = {int(k): v[0] for k, v in self.colormap.items()}  # Extract the first color from each list
+        colormap_tensor = tf.constant([colormap[i] for i in sorted(colormap.keys())], dtype=tf.uint8)
+
+        pred_colored = tf.gather(colormap_tensor, pred_labels)  # (batch_size, height, width, 3)
+        true_colored = tf.gather(colormap_tensor, true_labels)  # (batch_size, height, width, 3)
+
+        batch_size = images.shape[0]
+        
+        fig, axes = plt.subplots(batch_size, 3, figsize=(10, 5 * batch_size))
+        if batch_size == 1:
+            axes = [axes]  # Ensure axes is iterable when batch_size = 1
+        for i in range(batch_size):
+            # Original image
+            axes[i][0].imshow(tf.cast(images[i]*255, tf.uint8))
+            axes[i][0].axis("off")
+            axes[i][0].set_title("Input Image")
+
+            # Ground truth mask
+            axes[i][1].imshow(true_colored[i].numpy())
+            axes[i][1].axis("off")
+            axes[i][1].set_title("Ground Truth")
+
+            # Predicted mask
+            axes[i][2].imshow(pred_colored[i].numpy())
+            axes[i][2].axis("off")
+            axes[i][2].set_title("Prediction")
+
+        plt.tight_layout()
+        plt.show()
+
+
 @hydra.main(version_base=None, config_path="../config", config_name="config")
 def main(cfg: Config):
     # Read Label Map to get num_classes
@@ -96,20 +151,20 @@ def main(cfg: Config):
 
     # Predict
     predictor = Predictor(model=model, image_size=cfg.model.image_size, labelmap=labelmap, colormap=colormap)
-    y_pred = []
-    y_true = []
-    for (image_batch, mask_batch) in test_dataset:
-        y_pred.append(tf.reshape(predictor.predict_batch(image_batch), [-1]))
-        y_true.append(tf.reshape(tf.argmax(mask_batch, axis=-1), [-1]))
+    # y_pred = []
+    # y_true = []
+    # for (image_batch, mask_batch) in test_dataset:
+    #     y_pred.append(tf.reshape(predictor.predict_batch(image_batch), [-1]))
+    #     y_true.append(tf.reshape(tf.argmax(mask_batch, axis=-1), [-1]))
 
-    y_pred = tf.concat(y_pred, axis=0)  # Shape: [total_pixels]
-    y_true = tf.concat(y_true, axis=0) 
-    cm = tf.math.confusion_matrix(y_true, y_pred, num_classes=num_classes)
-    sns.heatmap(cm, annot=False, fmt="d", cmap="Blues", xticklabels=list(labelmap.values()), yticklabels=list(labelmap.values()))
-    plt.xlabel("Predicted Label")
-    plt.ylabel("True Label")
-    plt.title("Confusion Matrix")
-    plt.show()
+
+    # image_path = "/home/salwa/Documents/code/unet/data/synthetic_dataset_2/images/000.jpg"
+    # predictions = predictor.predict_single(image_path)
+    # predictor.visualize_predictions(predictions)
+
+    for (image_batch, mask_batch) in test_dataset:
+        predictor.visualize_batch_predictions(model, image_batch, mask_batch)
+        break        
 
 if __name__ == "__main__":
     main()
